@@ -1,0 +1,26 @@
+cmake_minimum_required(VERSION 3.19)
+project(PictureToWood)
+
+set(CMAKE_CXX_STANDARD 14)
+
+set(EXECUTABLE_NAME PictureToWood)
+
+set(SRC main.cpp)
+
+FIND_PACKAGE(Boost REQUIRED COMPONENTS regex)
+FIND_PACKAGE(OpenCV REQUIRED)
+
+INCLUDE_DIRECTORIES(
+        ${PROJECT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${Boost_INCLUDE_DIRS}
+        ${OpenCV_INCLUDE_DIRS}
+)
+
+SET(LIBS
+        ${Boost_LIBRARIES}
+        ${OpenCV_LIBS}
+        )
+
+ADD_EXECUTABLE(${EXECUTABLE_NAME} ${SRC})
+TARGET_LINK_LIBRARIES(${EXECUTABLE_NAME} ${LIBS})
