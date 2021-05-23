@@ -4,6 +4,12 @@
 
 #include "Picture.hpp"
 using namespace cv;
+
+/**
+ * Load the Image specified by path into the object
+ * @param path absolute path or relative path from the working directory
+ * @return creates a Picture Object containing the colored and grayscale version of the image
+ */
 Picture::Picture(char *path) {
     this->loadImg(path);
 }
