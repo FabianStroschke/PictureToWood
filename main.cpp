@@ -7,6 +7,7 @@ int main( int argc, char ** argv ) {
     Picture target(filename);
     Picture sample(filename2);
     target.show();
-    sample.show();
-
+    //sample.show();
+    sample.cutIntoGrid(4,4, CENTER);
+    sample.save_patches("Output");
 }
