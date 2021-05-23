@@ -27,7 +27,8 @@ class Picture {
         std::string name;
         cv::Mat img_normal;
         cv::Mat img_gray;
-        std::vector<cell> patches;
+        std::vector<cell> patches_normal;
+        std::vector<cell> patches_gray;
         explicit Picture(char *path);
         void show() const;
         void loadImg(char *path);

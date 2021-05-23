@@ -85,8 +85,9 @@ void Picture::cutIntoRect(int width, int height, alignment align) {
             cell.x = x;
             cell.y = y;
 
-            this->patches.emplace_back(img_gray(cell));
-            //this->patches.back().show();
+            this->patches_gray.emplace_back(img_gray(cell));
+            this->patches_normal.emplace_back(img_normal(cell));
+            //this->patches_gray.back().show();
         }
     }
 
@@ -160,8 +161,9 @@ void Picture::save_patches(const std::string& path) {
     }else{
         boost::filesystem::create_directory(output_path);
     }
-    for(int i = 0; i < patches.size(); i++){
-        imwrite(output_path + "/" + std::to_string(i) +".tiff",patches[i].data);
+    for(int i = 0; i < patches_gray.size(); i++){
+        imwrite(output_path + "/" + "n" + std::to_string(i) +".tiff", patches_normal[i].data);
+        imwrite(output_path + "/" + "g" + std::to_string(i) +".tiff", patches_gray[i].data);
     }
 }
 
