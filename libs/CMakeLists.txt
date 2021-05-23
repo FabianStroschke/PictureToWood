@@ -5,6 +5,8 @@ SET(LIB_NAME myLib)
 SET(SRC
         Picture.cpp
         Picture.hpp
+        Cell.cpp
+        Cell.hpp
         )
 
 ADD_LIBRARY(${LIB_NAME} ${SRC})

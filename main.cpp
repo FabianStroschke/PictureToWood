@@ -8,5 +8,6 @@ int main( int argc, char ** argv ) {
     Picture sample(filename2);
     target.show();
     //sample.show();
-    target.cutIntoSquares(108, CENTER);
+    sample.cutIntoGrid(4,4, CENTER);
+    sample.save_patches("Output");
 }

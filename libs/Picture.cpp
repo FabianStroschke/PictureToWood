@@ -22,8 +22,10 @@ void Picture::show() const {
 }
 void Picture::loadImg(char *path) {
     try {
-        this->img_normal = imread(samples::findFile(path), IMREAD_COLOR);
-        this->img_gray = imread(samples::findFile(path), IMREAD_GRAYSCALE);
+        String file_path = samples::findFile(path);
+        this->img_normal = imread(file_path, IMREAD_COLOR);
+        this->img_gray = imread(file_path, IMREAD_GRAYSCALE);
+        this->name = file_path.substr(file_path.find_last_of('/')+1, file_path.find_first_of('.') - file_path.find_last_of('/')-1);
     }catch (const std::exception& e) {
         std::cout << "Could not read image because of:\n" << e.what();
     }
@@ -33,7 +35,6 @@ void Picture::cutIntoRect(int width, int height, alignment align) {
     Rect cell;
     cell.width = width;
     cell.height = height;
-    std::string cellname;
     int offsetX = 0;
     int offsetY = 0;
     switch(align){
@@ -84,15 +85,8 @@ void Picture::cutIntoRect(int width, int height, alignment align) {
             cell.x = x;
             cell.y = y;
 
-            Mat crop = img_gray(cell);
-            std::stringstream ssfn;
-            ssfn << x << "X" << y << ".png";
-            cellname = ssfn.str();
-
-            namedWindow(cellname, WINDOW_AUTOSIZE);
-            moveWindow(cellname, 100 + x, 100 + y);
-            imshow(cellname, crop);
-            waitKey ( 10000);//TODO replace with better solution for waiting
+            this->patches.emplace_back(img_gray(cell));
+            //this->patches.back().show();
         }
     }
 
@@ -152,5 +146,22 @@ void Picture::cutIntoGrid(int cols, int rows, alignment align) {
     int height = img_gray.rows/rows;
     this->croppingAdjust(width,height);
     this->cutIntoRect(width,height,align);
+}
+
+void Picture::save_patches(const std::string& path) {
+    std::string output_path = boost::filesystem::current_path().string()+ "/" + path;
+    if(not boost::filesystem::exists(output_path))
+        boost::filesystem::create_directory(output_path);
+    output_path += "/" + this->name;
+
+    if(boost::filesystem::exists(output_path)){
+        boost::filesystem::remove_all(output_path);
+        boost::filesystem::create_directory(output_path);
+    }else{
+        boost::filesystem::create_directory(output_path);
+    }
+    for(int i = 0; i < patches.size(); i++){
+        imwrite(output_path + "/" + std::to_string(i) +".tiff",patches[i].data);
+    }
 }
 
