@@ -7,6 +7,6 @@ int main( int argc, char ** argv ) {
     Picture target(filename);
     Picture sample(filename2);
     target.show();
-    sample.show();
-
+    //sample.show();
+    target.cutIntoSquares(108, CENTER);
 }
