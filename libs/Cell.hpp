@@ -7,10 +7,13 @@
 
 
 #include "opencv2/highgui.hpp"
+#include <opencv2/imgproc.hpp>
 
 class cell {
     public:
-        cv::Mat data;
+        cv::Mat img;
+        cv::Mat img_gray;
+        cv::Mat img_filter;
         int width;
         int height;
 

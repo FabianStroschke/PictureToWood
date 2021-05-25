@@ -18,11 +18,9 @@ Picture::Picture(char *path) {
  * Show the colored and grayscale version of the image.
  */
 void Picture::show() const {
-    if(not (img_normal.empty() || img_gray.empty())){
+    if(not img.empty()){
         namedWindow("Image", WINDOW_AUTOSIZE);
-        namedWindow("Image Gray", WINDOW_AUTOSIZE);
-        imshow( "Image", this->img_normal);
-        imshow( "Image Gray", this->img_gray);
+        imshow( "Image", this->img);
         waitKey ( 10000);//TODO replace with better solution for waiting
     } else{
         std::cout << "No image to show.";
@@ -36,8 +34,7 @@ void Picture::show() const {
 void Picture::loadImg(char *path) {
     try {
         String file_path = samples::findFile(path);
-        this->img_normal = imread(file_path, IMREAD_COLOR);
-        this->img_gray = imread(file_path, IMREAD_GRAYSCALE);
+        this->img = imread(file_path, IMREAD_COLOR);
         this->name = file_path.substr(file_path.find_last_of('/')+1, file_path.find_first_of('.') - file_path.find_last_of('/')-1);
     }catch (const std::exception& e) {
         std::cout << "Could not read image because of:\n" << e.what();
@@ -45,7 +42,7 @@ void Picture::loadImg(char *path) {
 }
 
 /**
- * Cut both versions of the picture into rectangular patches. The patches are contained in patches_normal and patches_gray.
+ * Cut both versions of the picture into rectangular patches. The patches are contained in patches and patches_gray.
  * @param width Width of the patches in px.
  * @param height Height of the patches in px.
  * @param align Controls where the rectangle containing the patches will start. If the image needs to be croped, this will control where the cropping takes place. E.g TOP_LEFT meaning the Bottom and right boarder will be discarded.
@@ -63,36 +60,36 @@ void Picture::cutIntoRect(int width, int height, alignment align) {
             offsetY = 0;
             break;
         case TOP:
-            offsetX = (img_gray.cols % width)/2;
+            offsetX = (img.cols % width)/2;
             offsetY = 0;
             break;
         case TOP_RIGHT:
-            offsetX = (img_gray.cols % width);
+            offsetX = (img.cols % width);
             offsetY = 0;
             break;
         case LEFT:
             offsetX = 0;
-            offsetY = (img_gray.rows % height)/2;
+            offsetY = (img.rows % height)/2;
             break;
         case CENTER:
-            offsetX = (img_gray.cols % width)/2;
-            offsetY = (img_gray.rows % height)/2;
+            offsetX = (img.cols % width)/2;
+            offsetY = (img.rows % height)/2;
             break;
         case RIGHT:
-            offsetX = (img_gray.cols % width);
-            offsetY = (img_gray.rows % height)/2;
+            offsetX = (img.cols % width);
+            offsetY = (img.rows % height)/2;
             break;
         case BOTTOM_LEFT:
             offsetX = 0;
-            offsetY = (img_gray.rows % height);
+            offsetY = (img.rows % height);
             break;
         case BOTTOM:
-            offsetX = (img_gray.cols % width)/2;
-            offsetY = (img_gray.rows % height);
+            offsetX = (img.cols % width)/2;
+            offsetY = (img.rows % height);
             break;
         case BOTTOM_RIGHT:
-            offsetX = (img_gray.cols % width);
-            offsetY = (img_gray.rows % height);
+            offsetX = (img.cols % width);
+            offsetY = (img.rows % height);
             break;
     }
 
@@ -100,15 +97,14 @@ void Picture::cutIntoRect(int width, int height, alignment align) {
     //this->croppingAdjust(width,height);
 
     //go from top left to bottom right
-    for(int y = 0+offsetY; y + height <= img_gray.rows; y += height){
-        for(int x = 0+offsetX; x + width <= img_gray.cols; x += width){
+    for(int y = 0+offsetY; y + height <= img.rows; y += height){
+        for(int x = 0+offsetX; x + width <= img.cols; x += width){
             cell.x = x;
             cell.y = y;
 
             //create patch and put it into list
-            this->patches_gray.emplace_back(img_gray(cell));
-            this->patches_normal.emplace_back(img_normal(cell));
-            //this->patches_gray.back().show();
+            this->patches.emplace_back(img(cell));
+            //this->patches.back().show();
         }
     }
 
@@ -116,7 +112,7 @@ void Picture::cutIntoRect(int width, int height, alignment align) {
 
 
 /**
- * Cut both versions of the picture into square patches. The patches are contained in patches_normal and patches_gray.
+ * Cut both versions of the picture into square patches. The patches are contained in patches and patches.
  * @param width Width and height of the patches in px.
  * @param align Controls where the rectangle containing the patches will start. If the image needs to be croped, this will control where the cropping takes place. E.g TOP_LEFT meaning the Bottom and right boarder will be discarded.
  */
@@ -135,10 +131,10 @@ double Picture::croppingLoss(int width, int height) const {
     int newWidth;
     int newHeight;
 
-    newHeight = img_gray.rows - img_gray.rows % height;
-    newWidth = img_gray.cols - img_gray.cols % width;
+    newHeight = img.rows - img.rows % height;
+    newWidth = img.cols - img.cols % width;
 
-    return 1.0 - (double(newWidth*newHeight) / double(img_gray.cols*img_gray.rows));
+    return 1.0 - (double(newWidth*newHeight) / double(img.cols*img.rows));
 }
 
 /**
@@ -176,26 +172,26 @@ void Picture::croppingAdjust(int &width, int &height, bool keepRatio) {
 }
 
 /**
-* Cut both versions of the picture into square patches. The patches are contained in patches_normal and patches_gray.
+* Cut both versions of the picture into square patches. The patches are contained in patches
 * @param cols The number of columns the picture will be divided into.
 * @param align Controls where the rectangle containing the patches will start. If the image needs to be cropped, this will control where the cropping takes place. E.g TOP_LEFT meaning the Bottom and right boarder will be discarded.
 */
 void Picture::cutIntoGrid(int cols, alignment align) {
-    int width = img_gray.cols/cols;
+    int width = img.cols/cols;
     int height = width;
     this->croppingAdjust(width,height);
     this->cutIntoSquares(width,align);
 }
 
 /**
-* Cut both versions of the picture into rectangular patches. The patches are contained in patches_normal and patches_gray.
+* Cut both versions of the picture into rectangular patches. The patches are contained in patches
 * @param cols The number of columns the picture will be divided into.
 * @param rows The number of rows the picture will be divided into.
 * @param align Controls where the rectangle containing the patches will start. If the image needs to be cropped, this will control where the cropping takes place. E.g TOP_LEFT meaning the Bottom and right boarder will be discarded.
 */
 void Picture::cutIntoGrid(int cols, int rows, alignment align) {
-    int width = img_gray.cols/cols;
-    int height = img_gray.rows/rows;
+    int width = img.cols/cols;
+    int height = img.rows/rows;
     this->croppingAdjust(width,height);
     this->cutIntoRect(width,height,align);
 }
@@ -220,9 +216,9 @@ void Picture::save_patches(const std::string& path) {
     }
 
     //writes the images
-    for(int i = 0; i < patches_gray.size(); i++){
-        imwrite(output_path + "/" + "n" + std::to_string(i) +".tiff", patches_normal[i].data);
-        imwrite(output_path + "/" + "g" + std::to_string(i) +".tiff", patches_gray[i].data);
+    for(int i = 0; i < patches.size(); i++){
+        imwrite(output_path + "/" + "n" + std::to_string(i) +".tiff", patches[i].img);
+        imwrite(output_path + "/" + "g" + std::to_string(i) +".tiff", patches[i].img_gray);
     }
 }
 

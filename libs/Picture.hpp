@@ -25,10 +25,8 @@ enum alignment{
 class Picture {
     public:
         std::string name;
-        cv::Mat img_normal;
-        cv::Mat img_gray;
-        std::vector<cell> patches_normal;
-        std::vector<cell> patches_gray;
+        cv::Mat img;
+        std::vector<cell> patches;
 
         explicit Picture(char *path);
         void show() const;

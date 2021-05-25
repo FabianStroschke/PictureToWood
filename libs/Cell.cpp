@@ -5,19 +5,23 @@
 #include "Cell.hpp"
 
 cell::cell(cv::Mat img) {
-    this->data = img;
+    this->img = img;
+    cvtColor(img, this->img_gray, cv::COLOR_BGR2GRAY);
     this->width = img.cols;
     this->height = img.rows;
 }
 
 cell::cell(const cv::Mat& img, const cv::Rect& rec) {
-    this->data = img(rec);
-    this->width = data.cols;
-    this->height = data.rows;
+    this->img = img(rec);
+    cvtColor(this->img, this->img_gray, cv::COLOR_BGR2GRAY);
+    this->width = img.cols;
+    this->height = img.rows;
 }
 
 void cell::show() {
     namedWindow("Cell", cv::WINDOW_AUTOSIZE);
-    imshow("Cell", this->data);
+    namedWindow("Cell_gray", cv::WINDOW_AUTOSIZE);
+    imshow("Cell", this->img);
+    imshow("Cell_gray", this->img_gray);
     cv::waitKey ( 10000);//TODO replace with better solution for waiting
 }
