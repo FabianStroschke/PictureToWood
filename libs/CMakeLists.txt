@@ -7,6 +7,8 @@ SET(SRC
         Picture.hpp
         Cell.cpp
         Cell.hpp
+        Find_Patches.cpp
+        Find_Patches.hpp
         )
 
 ADD_LIBRARY(${LIB_NAME} ${SRC})
