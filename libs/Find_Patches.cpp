@@ -6,19 +6,26 @@
 
 
 std::vector<cell *> findMatchingPatches(const std::vector<cell>& target, std::vector<cell>& source, const std::function<long(const cell &, const cell &)> &comp){
-    std::vector<cell *> match;
-    for(const cell& t : target){
-        cell *best = &(source.front());
-        long min = comp(t, *best);
-        for(cell& s : source){
-            long diff = comp(t,s);
-            if(diff < min){
-                min = diff;
-                best = &s;
+    std::vector<cell *> match(target.size());
+    boost::asio::thread_pool pool(6);
+
+    for(int i = 0; i < target.size(); i++){
+        const cell& t = target[i];
+        auto func = [i, &t, &source, &match, &comp](){
+            cell *best = &(source.front());
+            long min = comp(t, *best);
+            for(cell& s : source){
+                long diff = comp(t,s);
+                if(diff < min){
+                    min = diff;
+                    best = &s;
+                }
             }
-        }
-        match.push_back(best);
+            match.at(i) = best;
+        };
+        boost::asio::post(pool, func);
     }
+    pool.join();
     return match;
 }
 
