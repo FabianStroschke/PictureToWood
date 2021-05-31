@@ -7,8 +7,7 @@
 
 std::vector<cell *> findMatchingPatches(const std::vector<cell>& target, std::vector<cell>& source, const std::function<long(const cell &, const cell &)> &comp){
     std::vector<cell *> match(target.size());
-    boost::asio::thread_pool pool(6);
-
+    boost::asio::thread_pool pool(boost::thread::hardware_concurrency());
     for(int i = 0; i < target.size(); i++){
         const cell& t = target[i];
         auto func = [i, &t, &source, &match, &comp](){
