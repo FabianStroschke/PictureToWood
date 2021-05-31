@@ -64,6 +64,5 @@ cv::Mat assambleOutput(std::vector<cell *> &patch_list, Picture &target){
 
     //show image
     imshow("result",matDst);
-    cv::waitKey(0);
     return matDst;
 }
