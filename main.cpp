@@ -9,10 +9,9 @@ int main( int argc, char ** argv ) {
     Picture sample(filename2);
     target.show();
     //sample.show();
-    target.cutIntoSquares(107, CENTER);
-    sample.cutIntoSquares(107, CENTER);
+    target.cutIntoSquares(40, CENTER);
+    sample.cutIntoSquares(40, CENTER);
     auto list = findMatchingPatches(target.patches, sample.patches, compareGray);
-    for(auto e : list){
-        e->show();
-    }
+    auto output = assambleOutput(list, target);
+
 }

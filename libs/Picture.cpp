@@ -94,6 +94,8 @@ void Picture::cutIntoRect(int width, int height, alignment align) {
     }
 
     std::cout << this->croppingLoss(width,height)*100 << "% of the picture will be lost due to cropping!\n";
+    std::cout << "cols:"<< img.cols / width << "\n";
+    std::cout << "rows:"<< img.rows / height << "\n";
     //this->croppingAdjust(width,height);
 
     //go from top left to bottom right
@@ -179,7 +181,7 @@ void Picture::croppingAdjust(int &width, int &height, bool keepRatio) {
 void Picture::cutIntoGrid(int cols, alignment align) {
     int width = img.cols/cols;
     int height = width;
-    this->croppingAdjust(width,height);
+    //this->croppingAdjust(width,height); //TODO fix adjust for small(under 20px) patches
     this->cutIntoSquares(width,align);
 }
 
