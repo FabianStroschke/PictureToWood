@@ -17,10 +17,10 @@
 #include "Picture.hpp"
 
 
-std::vector<cell *> findMatchingPatches(const std::vector<cell>& target, std::vector<cell>& source, const std::function<long(const cell &, const cell &)> &comp);
+std::vector<std::vector<cell *>> findMatchingPatches(const std::vector<std::vector<cell>>& target, std::vector<std::vector<cell>>& source, const std::function<long(const cell &, const cell &)> &comp);
 
 long compareGray(const cell& a, const cell& b);
 
-cv::Mat assambleOutput(std::vector<cell *> &patch_list, Picture &target);
+cv::Mat assembleOutput(std::vector<std::vector<cell *>> &patch_list, Picture &target);
 
 #endif //PICTURETOWOOD_FIND_PATCHES_HPP

@@ -26,7 +26,7 @@ class Picture {
     public:
         std::string name;
         cv::Mat img;
-        std::vector<cell> patches;
+        std::vector<std::vector<cell>> patches;
 
         explicit Picture(char *path);
         void show() const;

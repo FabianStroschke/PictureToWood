@@ -48,9 +48,9 @@ void Picture::loadImg(char *path) {
  * @param align Controls where the rectangle containing the patches will start. If the image needs to be croped, this will control where the cropping takes place. E.g TOP_LEFT meaning the Bottom and right boarder will be discarded.
  */
 void Picture::cutIntoRect(int width, int height, alignment align) {
-    Rect cell;
-    cell.width = width;
-    cell.height = height;
+    Rect rec;
+    rec.width = width;
+    rec.height = height;
     int offsetX = 0;
     int offsetY = 0;
     //calculate offset of patches
@@ -97,15 +97,17 @@ void Picture::cutIntoRect(int width, int height, alignment align) {
     std::cout << "cols:"<< img.cols / width << "\n";
     std::cout << "rows:"<< img.rows / height << "\n";
     //this->croppingAdjust(width,height);
+    this->patches = std::vector<std::vector<cell>>(img.cols / width);
 
     //go from top left to bottom right
-    for(int y = 0+offsetY; y + height <= img.rows; y += height){
-        for(int x = 0+offsetX; x + width <= img.cols; x += width){
-            cell.x = x;
-            cell.y = y;
+    for(int x = 0; offsetX + x*width +width<= img.cols; x++){
+        this->patches[x].reserve(img.rows / height);
+        for(int y = 0; offsetY + y*height + height <= img.rows; y++){
+            rec.x = offsetX + x * width;
+            rec.y = offsetY + y * height;
 
             //create patch and put it into list
-            this->patches.emplace_back(img(cell));
+            this->patches[x].emplace_back(img(rec));
             //this->patches.back().show();
         }
     }
@@ -218,9 +220,11 @@ void Picture::save_patches(const std::string& path) {
     }
 
     //writes the images
-    for(int i = 0; i < patches.size(); i++){
-        imwrite(output_path + "/" + "n" + std::to_string(i) +".tiff", patches[i].img);
-        imwrite(output_path + "/" + "g" + std::to_string(i) +".tiff", patches[i].img_gray);
+    for(int x = 0; x < patches.size(); x++) {
+        for (int y = 0; y < patches[x].size(); y++) {
+            imwrite(output_path + "/" + "n" + std::to_string(x) + "," + std::to_string(y) + ".tiff", patches[x][y].img);
+            imwrite(output_path + "/" + "g" + std::to_string(x) + "," + std::to_string(y) + ".tiff", patches[x][y].img_gray);
+        }
     }
 }
 
