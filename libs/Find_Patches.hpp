@@ -9,6 +9,9 @@
 #include <functional>
 #include <iostream>
 #include <boost/filesystem.hpp>
+#include <boost/asio/thread_pool.hpp>
+#include <boost/thread.hpp>
+#include <boost/asio/post.hpp>
 #include "opencv2/highgui.hpp"
 #include "Cell.hpp"
 #include "Picture.hpp"
