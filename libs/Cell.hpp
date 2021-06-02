@@ -17,6 +17,7 @@ class cell {
         int width;
         int height;
 
+        cell();
         cell(cv::Mat img);
         cell(const cv::Mat& img, const cv::Rect& rec);
 

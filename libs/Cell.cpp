@@ -4,6 +4,11 @@
 
 #include "Cell.hpp"
 
+cell::cell() {
+    this->width = 0;
+    this->height = 0;
+}
+
 cell::cell(cv::Mat img) {
     this->img = img;
     cvtColor(img, this->img_gray, cv::COLOR_BGR2GRAY);
@@ -14,8 +19,8 @@ cell::cell(cv::Mat img) {
 cell::cell(const cv::Mat& img, const cv::Rect& rec) {
     this->img = img(rec);
     cvtColor(this->img, this->img_gray, cv::COLOR_BGR2GRAY);
-    this->width = img.cols;
-    this->height = img.rows;
+    this->width = this->img.cols;
+    this->height = this->img.rows;
 }
 
 void cell::show() {
