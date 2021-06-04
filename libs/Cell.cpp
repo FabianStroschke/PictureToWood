@@ -23,6 +23,13 @@ cell::cell(const cv::Mat& img, const cv::Rect& rec) {
     this->height = this->img.rows;
 }
 
+void cell::rot90(){
+    cv::rotate( this->img, this->img, cv::ROTATE_90_CLOCKWISE);
+    cv::rotate( this->img_gray, this->img_gray, cv::ROTATE_90_CLOCKWISE);
+
+}
+
+
 void cell::show() {
     namedWindow("Cell", cv::WINDOW_AUTOSIZE);
     namedWindow("Cell_gray", cv::WINDOW_AUTOSIZE);

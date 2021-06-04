@@ -16,17 +16,26 @@ std::vector<std::vector<cell>> findMatchingPatches(const std::vector<std::vector
                 cv::Rect rec(0,0,t.width,t.height);
                 cell best(source.img,rec);
                 long min = comp(t, best);
-                for(int y_i = 0; y_i < source.img.rows - t.height; y_i+=7){
-                    for(int x_i = 0; x_i < source.img.cols - t.width; x_i+=7){
+                for(int y_i = 0; y_i < source.img.rows - t.height; y_i+=4){
+                    for(int x_i = 0; x_i < source.img.cols - t.width; x_i+=4){
                         rec.x = x_i;
                         rec.y = y_i;
+                        //TODO: optimize image access (remove .clone())
                         cell cur(source.img,rec);
-                        long diff = comp(t,cur);
-                        if(diff < min){
-                            min = diff;
-                            best = cur;
-                            //match[x][y] = best;
+                        cur.img = cur.img.clone();
+                        cur.img_gray = cur.img_gray.clone();
+                        for(int i = 0; i<4; i++){
+                            cur.rot90();
+                            long diff = comp(t,cur);
+                            if(diff < min){
+                                min = diff;
+                                best = cur;
+                                best.img = best.img.clone();
+                                best.img_gray = best.img_gray.clone();
+                                //match[x][y] = best;
+                            }
                         }
+
                     }
                 }
                 match[x][y] = best;

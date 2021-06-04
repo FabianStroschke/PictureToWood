@@ -21,6 +21,7 @@ class cell {
         cell(cv::Mat img);
         cell(const cv::Mat& img, const cv::Rect& rec);
 
+        void rot90();
         void show();
 };
 
