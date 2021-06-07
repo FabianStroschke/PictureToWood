@@ -3,47 +3,42 @@
 //
 
 #include "Find_Patches.hpp"
+#include "Patch_List.hpp"
 
 cv::Mat stitchPicture(std::vector<std::vector<cell>> &patch_list);
 
-std::vector<std::vector<cell>> findMatchingPatches(const std::vector<std::vector<cell>>& target, Picture &source, const std::function<long(const cell &, const cell &)> &comp){
-    std::vector<std::vector<cell>> match(target.size(),std::vector<cell>(target.front().size()));
+std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &source, const std::function<long(const cell &, const cell &)> &comp){
+    auto &patches = target.patches;
+    std::vector<std::vector<cell>> match(patches.size(),std::vector<cell>(patches.front().size()));
     boost::asio::thread_pool pool(boost::thread::hardware_concurrency());
-    for(int x = 0; x < target.size(); x++){
-        for(int y = 0; y < target[x].size(); y++){
-            const cell& t = target[x][y];
-            auto func = [x , y, &t, &source, &match, &comp](){
-                cv::Rect rec(0,0,t.width,t.height);
-                cell best(source.img,rec);
-                long min = comp(t, best);
-                for(int y_i = 0; y_i < source.img.rows - t.height; y_i+=4){
-                    for(int x_i = 0; x_i < source.img.cols - t.width; x_i+=4){
-                        rec.x = x_i;
-                        rec.y = y_i;
-                        //TODO: optimize image access (remove .clone())
-                        cell cur(source.img,rec);
-                        cur.img = cur.img.clone();
-                        cur.img_gray = cur.img_gray.clone();
-                        for(int i = 0; i<4; i++){
-                            cur.rot90();
-                            long diff = comp(t,cur);
-                            if(diff < min){
-                                min = diff;
-                                best = cur;
-                                best.img = best.img.clone();
-                                best.img_gray = best.img_gray.clone();
-                                //match[x][y] = best;
-                            }
-                        }
+    for(int x = 0; x < patches.size(); x++){
+        for(int y = 0; y < patches[x].size(); y++){
+            const cell& t = patches[x][y];
 
+            auto func = [x , y, &t, &source, &match, &comp](){
+                cell best(&source, t.shape, 0, 0);
+                cell cur(&source, t.shape, 0, 0);
+
+                long min = comp(t, best);
+                for(int y_i = 0; y_i < source.img.rows - t.height; y_i+=7){
+                    for(int x_i = 0; x_i < source.img.cols - t.width; x_i+=7){
+                        cur.moveTo(x_i,y_i);
+                        long diff = comp(t,cur);
+                        if(diff < min){
+                            min = diff;
+                            best.moveTo(x_i,y_i);
+                            //match[x][y] = best;
+                        }
                     }
                 }
                 match[x][y] = best;
+                //std::cout << cur.x << "\n";
             };
             boost::asio::post(pool, func);
 }
     }
-    while(match.back().back().width == 0){
+
+    while(match.back().back().source == nullptr){
         cv::waitKey(20);
         auto out = stitchPicture(match);
         if(not out.empty()){
@@ -56,37 +51,44 @@ std::vector<std::vector<cell>> findMatchingPatches(const std::vector<std::vector
 }
 
 long compareGray(const cell& a, const cell& b){
-    int numPixel = a.img_gray.dataend - a.img_gray.datastart;
     long sum = 0;
-    for(int i = 0; i < numPixel; i++){
-        sum += std::abs((a.img_gray.data[i] - b.img_gray.data[i]));
+    for(int y = 0; y<a.height; y++){
+        uchar *aPtr = a.source->img_gray.ptr(a.y+y, a.x);
+        uchar *bPtr = b.source->img_gray.ptr(b.y+y, b.x);
+        for(int x = 0; x<a.width; x++,aPtr++, bPtr++){
+            auto diff = (*aPtr - *bPtr);
+            sum += diff*diff;
+        }
     }
     return sum;
 }
 
-cv::Mat stitchPicture(std::vector<std::vector<cell>> &patch_list) {
-    if(!patch_list.front().front().img.empty()){
-        int x = (int) patch_list.size();
-        int y = (int) patch_list.front().size();
-        int width = patch_list.front().front().img.cols;
-        int height = patch_list.front().front().img.rows;
 
-        cv::Mat matDst(cv::Size(width * x, height * y), patch_list.front().front().img.type(), cv::Scalar::all(0));
-        for(int j = 0; j<y; j++){
-            for(int i = 0; i<x; i++){
-                cv::Mat matRoi = matDst(cv::Rect(width*i,height*j,width,height));
-                if(!patch_list[i][j].img.empty()){
-                    //cv::waitKey(100);
-                    patch_list[i][j].img.copyTo(matRoi);
-                }
+cv::Mat stitchPicture(std::vector<std::vector<cell>> &patch_list) {
+    if(patch_list.front().front().source == nullptr){
+        return cv::Mat();
+    }
+
+    int x = (int) patch_list.size();
+    int y = (int) patch_list.front().size();
+    int width = patch_list.front().front().width;
+    int height = patch_list.front().front().height;
+
+    cv::Mat matDst(cv::Size(width * x, height * y), patch_list.front().front().source->img.type(), cv::Scalar::all(0));
+    for(int j = 0; j<y; j++){
+        for(int i = 0; i<x; i++){
+            if(patch_list[i][j].source != nullptr) {
+                cv::Mat matRoi = matDst(cv::Rect(width * i, height * j, width, height));
+                patch_list[i][j].source->img(cv::Rect(patch_list[i][j].x, patch_list[i][j].y, patch_list[i][j].width,
+                                                      patch_list[i][j].height)).copyTo(matRoi);
             }
         }
-        return matDst;
     }
-    return cv::Mat();
+
+    return matDst;
 }
 
-cv::Mat assembleOutput(std::vector<std::vector<cell>> &patch_list, Picture &target){
+cv::Mat assembleOutput(std::vector<std::vector<cell>> &patch_list, picture &target){
     cv::Mat matDst = stitchPicture(patch_list);
 
     //checks if the output directory exist or creates

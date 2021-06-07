@@ -12,15 +12,17 @@
 
 class cell {
     public:
-        picture &source;
-        const cv::Mat &shape;
+        picture *source;
+        const cv::Mat *shape;
         int x;
         int y;
         int width;
         int height;
 
-        cell(picture &source, const cv::Mat &shape, int x = 0, int y = 0);
+        cell();
+        cell(picture *source, const cv::Mat *shape, int x = 0, int y = 0);
         void show();
+        void moveTo(int x_,int y_);
 };
 
 

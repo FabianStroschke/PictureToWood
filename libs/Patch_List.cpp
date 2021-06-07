@@ -4,7 +4,7 @@
 
 #include "Patch_List.hpp"
 
-patch_list::patch_list(picture &p, int x, int y, style style, alignment align) : pic(p){
+patch_list::patch_list(picture &p, int x, int y, style style, alignment align){
     int w = 0;
     int h = 0;
     switch(style){
@@ -13,17 +13,17 @@ patch_list::patch_list(picture &p, int x, int y, style style, alignment align) :
             h = y;
             break;
         case GRID:
-            w = pic.img.cols/x;
-            h = pic.img.rows/y;
+            w = p.img.cols/x;
+            h = p.img.rows/y;
             break;
     }
     this->shape = cv::Mat(cv::Size(w, h), CV_8U, 1);
-    cutIntoShape(align);
+    cutIntoShape(p, align);
 }
 
-patch_list::patch_list(picture &p, cv::Mat &shape, alignment align) : pic(p){
+patch_list::patch_list(picture &p, cv::Mat &shape, alignment align){
     this->shape = shape.clone();
-    cutIntoShape(align);
+    cutIntoShape(p, align);
 }
 
 
@@ -31,12 +31,12 @@ patch_list::patch_list(picture &p, cv::Mat &shape, alignment align) : pic(p){
  * Cut the picture into patches defined by shape.
  * @param align Controls where the rectangle containing the patches will start. If the image needs to be cropped, this will control where the cropping takes place. E.g TOP_LEFT meaning the Bottom and right boarder will be discarded.
  */
-void patch_list::cutIntoShape(alignment align) {
+void patch_list::cutIntoShape(picture &p, alignment align) {
     int offsetX = 0;
     int offsetY = 0;
     int width = shape.cols;
     int height = shape.rows;
-    auto &img = pic.img;
+    auto &img = p.img;
 
     //calculate offset of patches
     switch(align){
@@ -78,9 +78,11 @@ void patch_list::cutIntoShape(alignment align) {
             break;
     }
 
+    /*
     std::cout << this->croppingLoss(width,height)*100 << "% of the picture will be lost due to cropping!\n";
     std::cout << "cols:"<< img.cols / width << "\n";
     std::cout << "rows:"<< img.rows / height << "\n";
+     */
     //this->croppingAdjust(width,height);
     this->patches = std::vector<std::vector<cell>>(img.cols / width);
 
@@ -90,7 +92,7 @@ void patch_list::cutIntoShape(alignment align) {
         for(int y = 0; offsetY + y*height + height <= img.rows; y++){
 
             //create patch and put it into list
-            this->patches[x].emplace_back(pic, shape,offsetX + x * width, offsetY + y * height);
+            this->patches[x].emplace_back(&p, &shape,offsetX + x * width, offsetY + y * height);
             //this->patches.back().show();
         }
     }
@@ -109,7 +111,7 @@ void patch_list::save_patches(const std::string& path) {
         boost::filesystem::create_directory(output_path);
 
     //creates a sub directory for the image or clears an existing one
-    output_path += "/" + this->pic.name;
+    output_path += "/Patches";
     if(boost::filesystem::exists(output_path)){
         boost::filesystem::remove_all(output_path);
         boost::filesystem::create_directory(output_path);
@@ -122,7 +124,7 @@ void patch_list::save_patches(const std::string& path) {
         for (int y = 0; y < patches[x].size(); y++) {
             auto &p = patches[x][y];
             auto rec = cv::Rect(p.x,p.y,p.width,p.height);
-            imwrite(output_path + "/" + "n" + std::to_string(x) + "," + std::to_string(y) + ".tiff", this->pic.img(rec));
+            imwrite(output_path + "/" + "n" + std::to_string(x) + "," + std::to_string(y) + ".tiff", p.source->img(rec));
             //imwrite(output_path + "/" + "g" + std::to_string(x) + "," + std::to_string(y) + ".tiff", patches[x][y].img_gray);
         }
     }
@@ -134,15 +136,17 @@ void patch_list::save_patches(const std::string& path) {
  * @param height Height of the patches in px.
  * @return Percentage of image area that would be lost, using these dimensions in range from 0-1.
  */
+ /*
 double patch_list::croppingLoss(int width, int height) const{
     int newWidth;
     int newHeight;
 
-    newHeight = pic.img.rows - pic.img.rows % height;
-    newWidth = pic.img.cols - pic.img.cols % width;
+    newHeight = p.img.rows - p.img.rows % height;
+    newWidth = p.img.cols - p.img.cols % width;
 
-    return 1.0 - (double(newWidth*newHeight) / double(pic.img.cols*pic.img.rows));
+    return 1.0 - (double(newWidth*newHeight) / double(p.img.cols*p.img.rows));
 }
+*/
 
 /**
  * Adjusts the parameters to minimize the loss due to cropping.
@@ -151,30 +155,32 @@ double patch_list::croppingLoss(int width, int height) const{
  * @param keepRatio Specifics if the ratio between width and height should be kept the same or not.
  * @return Writes return values into width and height.
  */
+/*
 void patch_list::croppingAdjust(int &width, int &height, bool keepRatio) {
-    if(keepRatio) {
-        double ratio = (double) width / (double) height;
-        double loss = this->croppingLoss(width, height);
-        double minLoss = loss;
-        int originalWidth = width;
-        int newWidth;
-        int newHeight;
-        for (int x = -20; x <= 20; x++) {
-            newWidth = originalWidth + x;
-            newHeight = newWidth / ratio;
-            loss = this->croppingLoss(newWidth, newHeight);
-            if (loss < minLoss) {
-                width = newWidth;
-                height = newHeight;
-                minLoss = loss;
-            }
-        }
-        if (width != originalWidth) {
-            std::cout << "Better size for current Ratio in a 20 Pixel range found for: width = " << width
-                      << "| height = " << height << " with a loss of " << minLoss * 100 << "%";
-        }
-    }else{
-        //TODO
-    }
+   if(keepRatio) {
+       double ratio = (double) width / (double) height;
+       double loss = this->croppingLoss(width, height);
+       double minLoss = loss;
+       int originalWidth = width;
+       int newWidth;
+       int newHeight;
+       for (int x = -20; x <= 20; x++) {
+           newWidth = originalWidth + x;
+           newHeight = newWidth / ratio;
+           loss = this->croppingLoss(newWidth, newHeight);
+           if (loss < minLoss) {
+               width = newWidth;
+               height = newHeight;
+               minLoss = loss;
+           }
+       }
+       if (width != originalWidth) {
+           std::cout << "Better size for current Ratio in a 20 Pixel range found for: width = " << width
+                     << "| height = " << height << " with a loss of " << minLoss * 100 << "%";
+       }
+   }else{
+       //TODO
+   }
 }
+*/
 

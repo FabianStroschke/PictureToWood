@@ -29,17 +29,17 @@ enum style{
 class patch_list {
 public:
     std::vector<std::vector<cell>> patches;
-    picture &pic;
-    cv::Mat shape;
 
     patch_list(picture &p, int x, int y, style style=RECTANGLE, alignment align=CENTER);
     patch_list(picture &p, cv::Mat &shape, alignment align=CENTER);
     void save_patches(const std::string& path);
 
 private:
-    void cutIntoShape(alignment align);
-    double croppingLoss(int width, int height) const;
-    void croppingAdjust(int &width, int &height, bool keepRatio = true);
+    cv::Mat shape;
+
+    void cutIntoShape(picture &p, alignment align);
+    //double croppingLoss(int width, int height) const;
+    //void croppingAdjust(int &width, int &height, bool keepRatio = true);
 };
 
 

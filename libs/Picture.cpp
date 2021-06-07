@@ -35,6 +35,7 @@ void picture::loadImg(char *path) {
     try {
         String file_path = samples::findFile(path);
         this->img = imread(file_path, IMREAD_COLOR);
+        this->img_gray = imread(file_path, IMREAD_GRAYSCALE);
         this->name = file_path.substr(file_path.find_last_of('/')+1, file_path.find_first_of('.') - file_path.find_last_of('/')-1);
     }catch (const std::exception& e) {
         std::cout << "Could not read image because of:\n" << e.what();

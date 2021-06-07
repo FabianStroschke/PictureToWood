@@ -13,6 +13,7 @@ class picture {
     public:
         std::string name;
         cv::Mat img;
+        cv::Mat img_gray;
 
         explicit picture(char *path);
         void show() const;
