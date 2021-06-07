@@ -12,8 +12,9 @@ void endTimer(){
     end = high_resolution_clock::now();
 }
 
-void log(){
+double log(){
     duration<double, std::milli> ms_double = end - start;
 
     std::cout << ms_double.count() << "ms";
+    return ms_double.count();
 }
