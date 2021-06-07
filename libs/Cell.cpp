@@ -4,7 +4,7 @@
 
 #include "Cell.hpp"
 
-cell::cell(Picture &source, const cv::Mat &shape, int x, int y) : shape(shape), source(source) {
+cell::cell(picture &source, const cv::Mat &shape, int x, int y) : shape(shape), source(source) {
     this->x = x;
     this->y = y;
     this->width = shape.cols;

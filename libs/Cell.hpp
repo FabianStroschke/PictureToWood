@@ -12,14 +12,14 @@
 
 class cell {
     public:
+        picture &source;
         const cv::Mat &shape;
-        Picture &source;
         int x;
         int y;
         int width;
         int height;
 
-        cell(Picture &source, const cv::Mat &shape, int x = 0, int y = 0);
+        cell(picture &source, const cv::Mat &shape, int x = 0, int y = 0);
         void show();
 };
 
