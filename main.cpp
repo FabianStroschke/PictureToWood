@@ -5,6 +5,7 @@
 
 char filename[] = "input/Target3.jpg";
 char filename2[] = "input/wood_paper.png";
+//char filename2[] = "input/16_wood_samples.jpg";
 
 int main( int argc, char ** argv ) {
     picture target(filename);
@@ -12,7 +13,10 @@ int main( int argc, char ** argv ) {
     //target.show();
     //sample.show();
 
-    auto plist = patch_list(target,20,20);
+    sample.addRotations(15);
+    //sample.show();
+
+    auto plist = patch_list(target,30,30);
 
     startTimer();
     auto list = findMatchingPatches(plist, sample, compareGray);

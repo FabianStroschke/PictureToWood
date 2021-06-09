@@ -18,6 +18,7 @@ class cell {
         int y;
         int width;
         int height;
+        int rot;
 
         cell();
         cell(picture *source, const cv::Mat *shape, int x = 0, int y = 0);

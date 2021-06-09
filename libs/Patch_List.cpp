@@ -13,8 +13,8 @@ patch_list::patch_list(picture &p, int x, int y, style style, alignment align){
             h = y;
             break;
         case GRID:
-            w = p.img.cols/x;
-            h = p.img.rows/y;
+            w = p.images[0].img.cols/x;
+            h = p.images[0].img.rows/y;
             break;
     }
     this->shape = cv::Mat(cv::Size(w, h), CV_8U, 1);
@@ -36,7 +36,7 @@ void patch_list::cutIntoShape(picture &p, alignment align) {
     int offsetY = 0;
     int width = shape.cols;
     int height = shape.rows;
-    auto &img = p.img;
+    auto &img = p.images[0].img;
 
     //calculate offset of patches
     switch(align){
@@ -124,7 +124,7 @@ void patch_list::save_patches(const std::string& path) {
         for (int y = 0; y < patches[x].size(); y++) {
             auto &p = patches[x][y];
             auto rec = cv::Rect(p.x,p.y,p.width,p.height);
-            imwrite(output_path + "/" + "n" + std::to_string(x) + "," + std::to_string(y) + ".tiff", p.source->img(rec));
+            imwrite(output_path + "/" + "n" + std::to_string(x) + "," + std::to_string(y) + ".tiff", p.source->images[0].img(rec));
             //imwrite(output_path + "/" + "g" + std::to_string(x) + "," + std::to_string(y) + ".tiff", patches[x][y].img_gray);
         }
     }

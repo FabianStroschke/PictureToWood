@@ -11,17 +11,19 @@ cell::cell() {
     y = -1;
     width = -1;
     height = -1;
+    rot = 0;
 }
 
 cell::cell(picture *source, const cv::Mat *shape, int x, int y) : y(y), x(x), shape(shape), source(source) {
     this->width = shape->cols;
     this->height = shape->rows;
+    rot = 0;
 }
 
 
 void cell::show() {
     namedWindow("Cell", cv::WINDOW_AUTOSIZE);
-    auto crop = this->source->img(cv::Rect(x,y,width,height));
+    auto crop = this->source->images[0].img(cv::Rect(x,y,width,height));
     imshow("Cell", crop);
     cv::waitKey ( 10000);//TODO replace with better solution for waiting
 }

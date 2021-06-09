@@ -20,14 +20,18 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &
                 cell cur(&source, t.shape, 0, 0);
 
                 long min = comp(t, best);
-                for(int y_i = 0; y_i < source.img.rows - t.height; y_i+=7){
-                    for(int x_i = 0; x_i < source.img.cols - t.width; x_i+=7){
-                        cur.moveTo(x_i,y_i);
-                        long diff = comp(t,cur);
-                        if(diff < min){
-                            min = diff;
-                            best.moveTo(x_i,y_i);
-                            //match[x][y] = best;
+                for(int r = 0; r < source.images.size(); r++) {
+                    cur.rot = r;
+                    auto img = source.images[r].img;
+                    for (int y_i = 0; y_i < img.rows - t.height; y_i += 7) {
+                        for (int x_i = 0; x_i < img.cols - t.width; x_i += 7) {
+                            cur.moveTo(x_i, y_i);
+                            long diff = comp(t, cur);
+                            if (diff < min && diff >0) {
+                                min = diff;
+                                best = cur;
+                                //match[x][y] = best;
+                            }
                         }
                     }
                 }
@@ -53,9 +57,12 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &
 long compareGray(const cell& a, const cell& b){
     long sum = 0;
     for(int y = 0; y<a.height; y++){
-        uchar *aPtr = a.source->img_gray.ptr(a.y+y, a.x);
-        uchar *bPtr = b.source->img_gray.ptr(b.y+y, b.x);
-        for(int x = 0; x<a.width; x++,aPtr++, bPtr++){
+        uchar *aPtr = a.source->images[a.rot].img_gray.ptr(a.y+y, a.x);
+        uchar *bPtr = b.source->images[b.rot].img_gray.ptr(b.y+y, b.x);
+        uchar *aPtrMask = a.source->images[a.rot].mask.ptr(a.y+y, a.x);
+        uchar *bPtrMask = b.source->images[b.rot].mask.ptr(b.y+y, b.x);
+        for(int x = 0; x<a.width; x++,aPtr++, bPtr++, aPtrMask++, bPtrMask++){
+            if(*aPtrMask == 0 || *bPtrMask ==0) return -1;
             auto diff = (*aPtr - *bPtr);
             sum += diff*diff;
         }
@@ -74,12 +81,12 @@ cv::Mat stitchPicture(std::vector<std::vector<cell>> &patch_list) {
     int width = patch_list.front().front().width;
     int height = patch_list.front().front().height;
 
-    cv::Mat matDst(cv::Size(width * x, height * y), patch_list.front().front().source->img.type(), cv::Scalar::all(0));
+    cv::Mat matDst(cv::Size(width * x, height * y), patch_list.front().front().source->images[0].img.type(), cv::Scalar::all(0));
     for(int j = 0; j<y; j++){
         for(int i = 0; i<x; i++){
             if(patch_list[i][j].source != nullptr) {
                 cv::Mat matRoi = matDst(cv::Rect(width * i, height * j, width, height));
-                patch_list[i][j].source->img(cv::Rect(patch_list[i][j].x, patch_list[i][j].y, patch_list[i][j].width,
+                patch_list[i][j].source->images[patch_list[i][j].rot].img(cv::Rect(patch_list[i][j].x, patch_list[i][j].y, patch_list[i][j].width,
                                                       patch_list[i][j].height)).copyTo(matRoi);
             }
         }
