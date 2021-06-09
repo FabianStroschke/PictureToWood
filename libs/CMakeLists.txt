@@ -6,7 +6,8 @@ SET(SRC
         Picture.cpp Picture.hpp
         Cell.cpp Cell.hpp
         Find_Patches.cpp Find_Patches.hpp
-        Time_Measure.cpp Time_Measure.hpp)
+        Time_Measure.cpp Time_Measure.hpp
+        Patch_List.cpp Patch_List.hpp)
 
 ADD_LIBRARY(${LIB_NAME} ${SRC})
 

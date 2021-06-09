@@ -4,24 +4,33 @@
 
 #include "Cell.hpp"
 
-cell::cell(cv::Mat img) {
-    this->img = img;
-    cvtColor(img, this->img_gray, cv::COLOR_BGR2GRAY);
-    this->width = img.cols;
-    this->height = img.rows;
+cell::cell() {
+    source = nullptr;
+    shape = nullptr;
+    x = -1;
+    y = -1;
+    width = -1;
+    height = -1;
+    rot = 0;
 }
 
-cell::cell(const cv::Mat& img, const cv::Rect& rec) {
-    this->img = img(rec);
-    cvtColor(this->img, this->img_gray, cv::COLOR_BGR2GRAY);
-    this->width = img.cols;
-    this->height = img.rows;
+cell::cell(picture *source, const cv::Mat *shape, int x, int y) : y(y), x(x), shape(shape), source(source) {
+    this->width = shape->cols;
+    this->height = shape->rows;
+    rot = 0;
 }
+
 
 void cell::show() {
     namedWindow("Cell", cv::WINDOW_AUTOSIZE);
-    namedWindow("Cell_gray", cv::WINDOW_AUTOSIZE);
-    imshow("Cell", this->img);
-    imshow("Cell_gray", this->img_gray);
+    auto crop = this->source->images[0].img(cv::Rect(x,y,width,height));
+    imshow("Cell", crop);
     cv::waitKey ( 10000);//TODO replace with better solution for waiting
 }
+
+void cell::moveTo(int x_,int y_) {
+    this->x = x_;
+    this->y = y_;
+}
+
+

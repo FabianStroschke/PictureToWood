@@ -19,7 +19,7 @@ auto static end = high_resolution_clock::now();
 
 void startTimer();
 void endTimer();
-void log();
+double log();
 
 
 #endif //PICTURETOWOOD_TIME_MEASURE_HPP

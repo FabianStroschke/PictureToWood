@@ -7,20 +7,23 @@
 
 
 #include "opencv2/highgui.hpp"
+#include "Picture.hpp"
 #include <opencv2/imgproc.hpp>
 
 class cell {
     public:
-        cv::Mat img;
-        cv::Mat img_gray;
-        cv::Mat img_filter;
+        picture *source;
+        const cv::Mat *shape;
+        int x;
+        int y;
         int width;
         int height;
+        int rot;
 
-        cell(cv::Mat img);
-        cell(const cv::Mat& img, const cv::Rect& rec);
-
+        cell();
+        cell(picture *source, const cv::Mat *shape, int x = 0, int y = 0);
         void show();
+        void moveTo(int x_,int y_);
 };
 
 

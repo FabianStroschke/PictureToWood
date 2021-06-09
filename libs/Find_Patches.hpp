@@ -15,12 +15,13 @@
 #include "opencv2/highgui.hpp"
 #include "Cell.hpp"
 #include "Picture.hpp"
+#include "Patch_List.hpp"
 
 
-std::vector<std::vector<cell *>> findMatchingPatches(const std::vector<std::vector<cell>>& target, std::vector<std::vector<cell>>& source, const std::function<long(const cell &, const cell &)> &comp);
+std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &source, const std::function<long(const cell &, const cell &)> &comp);
 
 long compareGray(const cell& a, const cell& b);
 
-cv::Mat assembleOutput(std::vector<std::vector<cell *>> &patch_list, Picture &target);
+cv::Mat assembleOutput(std::vector<std::vector<cell>> &patch_list, picture &target);
 
 #endif //PICTURETOWOOD_FIND_PATCHES_HPP
