@@ -23,8 +23,8 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &
                 for(int r = 0; r < source.images.size(); r++) {
                     cur.rot = r;
                     auto img = source.images[r].img;
-                    for (int y_i = 0; y_i < img.rows - t.height; y_i += 7) {
-                        for (int x_i = 0; x_i < img.cols - t.width; x_i += 7) {
+                    for (int y_i = 0; y_i < img.rows - t.height; y_i += 12) {
+                        for (int x_i = 0; x_i < img.cols - t.width; x_i += 12) {
                             cur.moveTo(x_i, y_i);
                             long diff = comp(t, cur);
                             if (diff < min && diff >0) {
@@ -59,12 +59,15 @@ long compareGray(const cell& a, const cell& b){
     for(int y = 0; y<a.height; y++){
         uchar *aPtr = a.source->images[a.rot].img_gray.ptr(a.y+y, a.x);
         uchar *bPtr = b.source->images[b.rot].img_gray.ptr(b.y+y, b.x);
+        uchar *aPtrFilter = a.source->images[a.rot].img_filter.ptr(a.y+y, a.x);
+        uchar *bPtrFilter = b.source->images[b.rot].img_filter.ptr(b.y+y, b.x);
         uchar *aPtrMask = a.source->images[a.rot].mask.ptr(a.y+y, a.x);
         uchar *bPtrMask = b.source->images[b.rot].mask.ptr(b.y+y, b.x);
-        for(int x = 0; x<a.width; x++,aPtr++, bPtr++, aPtrMask++, bPtrMask++){
+        for(int x = 0; x<a.width; x++,aPtr++, bPtr++, aPtrMask++, bPtrMask++, aPtrFilter++, bPtrFilter++){
             if(*aPtrMask == 0 || *bPtrMask ==0) return -1;
-            auto diff = (*aPtr - *bPtr);
-            sum += diff*diff;
+            auto diff1 = (*aPtr - *bPtr);
+            auto diff2 = (*aPtrFilter - *bPtrFilter);
+            sum += 0.5*(diff1*diff1) + 0.5*(diff2*diff2);
         }
     }
     return sum;

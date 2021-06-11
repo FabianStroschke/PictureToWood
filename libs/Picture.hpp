@@ -14,6 +14,7 @@
 struct image_set{
     cv::Mat img;
     cv::Mat img_gray;
+    cv::Mat img_filter;
     cv::Mat mask;
 };
 
@@ -24,7 +25,7 @@ class picture {
 
         explicit picture(char *path);
         void show() const;
-        void loadImg(char *path);
+        void loadImg(char *path, int filter_type);
         void addRotations(int n);
 };
 
