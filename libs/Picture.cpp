@@ -38,7 +38,8 @@ void picture::loadImg(char *path, int filter_type) {
     try {
         String file_path = samples::findFile(path);
         this->images[0].img = imread(file_path, IMREAD_COLOR);
-        this->images[0].img_gray = imread(file_path, IMREAD_GRAYSCALE);
+        cv::Mat gray = imread(file_path, IMREAD_GRAYSCALE);
+        cv::equalizeHist(gray, this->images[0].img_gray);
 
         switch(filter_type){
             case 0:
