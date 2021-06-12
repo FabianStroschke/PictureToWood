@@ -17,7 +17,7 @@ patch_list::patch_list(picture &p, int x, int y, style style, alignment align){
             h = p.images[0].img.rows/y;
             break;
     }
-    this->shape = cv::Mat(cv::Size(w, h), CV_8U, 1);
+    this->shape = cv::Mat(cv::Size(w, h), CV_8U, 255);
     cutIntoShape(p, align);
 }
 
