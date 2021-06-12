@@ -17,7 +17,6 @@
 #include "Picture.hpp"
 #include "Patch_List.hpp"
 
-
 std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &source, const std::function<long(const cell &, const cell &)> &comp);
 
 long compareGray(const cell& a, const cell& b);

@@ -4,7 +4,7 @@
 #include <Patch_List.hpp>
 
 char filename[] = "input/Target3.jpg";
-char filename2[] = "input/wood_paper.png";
+char filename2[] = "input/wood_sample3.tiff";
 //char filename2[] = "input/16_wood_samples.jpg";
 
 int main( int argc, char ** argv ) {
@@ -13,7 +13,7 @@ int main( int argc, char ** argv ) {
     //target.show();
     //sample.show();
 
-    sample.addRotations(15);
+    sample.addRotations(13);
     //sample.show();
 
     auto plist = patch_list(target,30,30);

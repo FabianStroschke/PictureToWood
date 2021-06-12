@@ -27,6 +27,7 @@ class picture {
         void show() const;
         void loadImg(char *path, int filter_type);
         void addRotations(int n);
+        void updateMasks();
 };
 
 

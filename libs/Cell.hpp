@@ -14,6 +14,7 @@ class cell {
     public:
         picture *source;
         const cv::Mat *shape;
+        cv::Mat data;
         int x;
         int y;
         int width;
@@ -24,6 +25,9 @@ class cell {
         cell(picture *source, const cv::Mat *shape, int x = 0, int y = 0);
         void show();
         void moveTo(int x_,int y_);
+        bool claimCell();
+        bool isContinuous() const;
+
 };
 
 

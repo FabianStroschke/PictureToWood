@@ -7,6 +7,8 @@
 
 cv::Mat stitchPicture(std::vector<std::vector<cell>> &patch_list);
 
+boost::mutex claimMutex;
+
 std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &source, const std::function<long(const cell &, const cell &)> &comp){
     auto &patches = target.patches;
     std::vector<std::vector<cell>> match(patches.size(),std::vector<cell>(patches.front().size()));
@@ -16,27 +18,35 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &
             const cell& t = patches[x][y];
 
             auto func = [x , y, &t, &source, &match, &comp](){
-                cell best(&source, t.shape, 0, 0);
-                cell cur(&source, t.shape, 0, 0);
+                bool cellClaimed = false;
+                int count = 0;
+                while(not cellClaimed && count <10 ) {
+                    count++;
+                    cell best(&source, t.shape, 0, 0);
+                    cell cur(&source, t.shape, 0, 0);
 
-                long min = comp(t, best);
-                for(int r = 0; r < source.images.size(); r++) {
-                    cur.rot = r;
-                    auto img = source.images[r].img;
-                    for (int y_i = 0; y_i < img.rows - t.height; y_i += 12) {
-                        for (int x_i = 0; x_i < img.cols - t.width; x_i += 12) {
-                            cur.moveTo(x_i, y_i);
-                            long diff = comp(t, cur);
-                            if (diff < min && diff >0) {
-                                min = diff;
-                                best = cur;
-                                //match[x][y] = best;
+
+                    long min = comp(t, best);
+                    for (int r = 0; r < source.images.size(); r++) {
+                        cur.rot = r;
+                        auto img = source.images[r].img;
+                        for (int y_i = 0; y_i < img.rows - t.height; y_i += 20) {
+                            for (int x_i = 0; x_i < img.cols - t.width; x_i += 20) {
+                                cur.moveTo(x_i, y_i);
+                                long diff = comp(t, cur);
+                                if ((diff < min && diff > 0) || min < 0) {
+                                    min = diff;
+                                    best = cur;
+                                    //match[x][y] = best;
+                                }
                             }
                         }
                     }
+                    match[x][y] = best;
+                    claimMutex.lock();
+                    cellClaimed = match[x][y].claimCell();
+                    claimMutex.unlock();
                 }
-                match[x][y] = best;
-                //std::cout << cur.x << "\n";
             };
             boost::asio::post(pool, func);
 }
@@ -48,6 +58,12 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &
         if(not out.empty()){
             namedWindow("Final Image", cv::WINDOW_AUTOSIZE);
             imshow( "Final Image", out);
+
+            //cv::Mat maskedImg;
+            //cv::bitwise_and(source.images[0].img_gray,source.images[0].mask,maskedImg);
+
+            //namedWindow("Cut", cv::WINDOW_AUTOSIZE);
+            //imshow( "Cut", maskedImg);
         }
     }
     pool.join();
@@ -89,8 +105,7 @@ cv::Mat stitchPicture(std::vector<std::vector<cell>> &patch_list) {
         for(int i = 0; i<x; i++){
             if(patch_list[i][j].source != nullptr) {
                 cv::Mat matRoi = matDst(cv::Rect(width * i, height * j, width, height));
-                patch_list[i][j].source->images[patch_list[i][j].rot].img(cv::Rect(patch_list[i][j].x, patch_list[i][j].y, patch_list[i][j].width,
-                                                      patch_list[i][j].height)).copyTo(matRoi);
+                patch_list[i][j].data.copyTo(matRoi);
             }
         }
     }
