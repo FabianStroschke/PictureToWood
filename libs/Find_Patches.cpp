@@ -70,7 +70,7 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &
     return match;
 }
 
-long compareGray(const cell& a, const cell& b){
+long compareFilter(const cell& a, const cell& b){
     long sum = 0;
     for(int y = 0; y<a.height; y++){
         uchar *aPtr = a.source->images[a.rot].img_gray.ptr(a.y+y, a.x);
@@ -84,6 +84,21 @@ long compareGray(const cell& a, const cell& b){
             auto diff1 = (*aPtr - *bPtr);
             auto diff2 = (*aPtrFilter - *bPtrFilter);
             sum += 0.5*(diff1*diff1) + 0.5*(diff2*diff2);
+        }
+    }
+    return sum;
+}
+long compareGray(const cell& a, const cell& b){
+    long sum = 0;
+    for(int y = 0; y<a.height; y++){
+        uchar *aPtr = a.source->images[a.rot].img_gray.ptr(a.y+y, a.x);
+        uchar *bPtr = b.source->images[b.rot].img_gray.ptr(b.y+y, b.x);
+        uchar *aPtrMask = a.source->images[a.rot].mask.ptr(a.y+y, a.x);
+        uchar *bPtrMask = b.source->images[b.rot].mask.ptr(b.y+y, b.x);
+        for(int x = 0; x<a.width; x++,aPtr++, bPtr++, aPtrMask++, bPtrMask++){
+            if(*aPtrMask == 0 || *bPtrMask ==0) return -1;
+            auto diff1 = (*aPtr - *bPtr);
+            sum += (diff1*diff1);
         }
     }
     return sum;
