@@ -1,21 +1,19 @@
 {
   "rotations": 13,
-  "stepSizeX":{
+  "stepSize":{
     "x": 10,
     "y": 10
   },
   "patchSize":{
-    "x": 10,
-    "y": 10
+    "x": 20,
+    "y": 20
   },
   "target": {
     "path": "Target4.png",
     "dpi": 300
   },
-  "woodTextures": {
-    "1": {
-      "name": "wood_sample2.png",
+  "woodTextures": [{
+      "path": "wood_sample2.png",
       "dpi": 300
-    }
+    }]
   }
-}

@@ -17,10 +17,11 @@
 #include "Picture.hpp"
 #include "Patch_List.hpp"
 
-std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &source, const std::function<long(const cell &, const cell &)> &comp);
 
 long compareFilter(const cell& a, const cell& b);
 long compareGray(const cell& a, const cell& b);
+
+std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &source, const int stepX, const int stepY, const std::function<long(const cell &, const cell &)> &comp = compareFilter);
 
 cv::Mat assembleOutput(std::vector<std::vector<cell>> &patch_list, picture &target);
 

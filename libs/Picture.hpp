@@ -23,9 +23,9 @@ class picture {
         std::string name;
         std::vector<struct image_set> images;
 
-        explicit picture(char *path);
+        explicit picture(const std::string &path);
         void show() const;
-        void loadImg(char *path, int filter_type);
+        void loadImg(const std::string& path, int filter_type);
         void addRotations(int n);
         void updateMasks();
 };

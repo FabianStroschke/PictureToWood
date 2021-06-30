@@ -10,7 +10,7 @@ using namespace cv;
  * @param path Absolute path or relative path from the working directory.
  * @return Creates a picture Object containing the colored and grayscale version of the image.
  */
-picture::picture(char *path) {
+picture::picture(const std::string &path) {
     this->images.resize(1);
     this->loadImg(path, 0);
 }
@@ -34,7 +34,7 @@ void picture::show() const {
  * Load the Image specified by path into the picture object, replacing the current images and replacing the name with the new file name.
  * @param path Absolute path or relative path from the working directory.
  */
-void picture::loadImg(char *path, int filter_type) {
+void picture::loadImg(const std::string& path, int filter_type) {
     try {
         String file_path = samples::findFile(path);
         this->images[0].img = imread(file_path, IMREAD_COLOR);
