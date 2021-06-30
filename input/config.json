@@ -1,8 +1,8 @@
 {
   "rotations": 13,
   "stepSize":{
-    "x": 10,
-    "y": 10
+    "x": 20,
+    "y": 20
   },
   "patchSize":{
     "x": 20,

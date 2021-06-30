@@ -36,12 +36,16 @@ int main( int argc, char ** argv ) {
     checkInputs(argc,argv);
     nlohmann::json config  = readJSON(argv);
 
-    picture target(config["offset"].get<std::string>() + config["target"]["path"].get<std::string>());
-    picture sample(config["offset"].get<std::string>() + config["woodTextures"].at(0)["path"].get<std::string>());
+    picture target(config["offset"].get<std::string>() + config["target"]["path"].get<std::string>(), config["target"]["dpi"]);
+    picture sample(config["offset"].get<std::string>() + config["woodTextures"].at(0)["path"].get<std::string>(), config["woodTextures"].at(0)["dpi"]);
+
     //TODO add multiple samples
 
     //target.show();
     //sample.show();
+
+    //target.scaleTo(100);
+    sample.scaleTo(600);
 
     sample.addRotations(config["rotations"]);
     //sample.show();
