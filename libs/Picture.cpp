@@ -61,7 +61,9 @@ void picture::updateImageSet() {
         }
     }
     cvtColor(images[0].img, images[0].img_gray, COLOR_BGR2GRAY);
-    equalizeHist(images[0].img_gray, images[0].img_gray);
+    if(equalize){
+        equalizeHist(images[0].img_gray, images[0].img_gray);
+    }
 
     switch(this->filterType){
         case 0:
@@ -147,4 +149,9 @@ void picture::scaleTo(unsigned int dpi) {
     this->currentDPI = dpi;
     updateImageSet();
     addRotations(images.size());
+}
+
+void picture::setEqualize(bool e) {
+    this->equalize = e;
+    updateImageSet();
 }

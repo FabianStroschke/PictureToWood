@@ -37,23 +37,19 @@ int main( int argc, char ** argv ) {
     nlohmann::json config  = readJSON(argv);
 
     picture target(config["offset"].get<std::string>() + config["target"]["path"].get<std::string>(), config["target"]["dpi"]);
-    picture sample(config["offset"].get<std::string>() + config["woodTextures"].at(0)["path"].get<std::string>(), config["woodTextures"].at(0)["dpi"]);
+    target.setEqualize(true);
 
-    //TODO add multiple samples
-
-    //target.show();
-    //sample.show();
-
-    //target.scaleTo(100);
-    sample.scaleTo(600);
-
-    sample.addRotations(config["rotations"]);
-    //sample.show();
+    std::vector<picture> texture_list;
+    for (auto & e : config["woodTextures"]) {
+        texture_list.emplace_back(config["offset"].get<std::string>() + e["path"].get<std::string>(), e["dpi"]);
+        texture_list.back().scaleTo(target.origDPI);
+        texture_list.back().addRotations(config["rotations"]);
+    }
 
     auto plist = patch_list(target,config["patchSize"]["x"],config["patchSize"]["y"]);
 
     startTimer();
-    auto list = findMatchingPatches(plist, sample, config["stepSize"]["x"], config["stepSize"]["y"],compareGray);
+    auto list = findMatchingPatches(plist, texture_list, config["stepSize"]["x"], config["stepSize"]["y"],compareFilter);
     auto output = assembleOutput(list, target);
     endTimer();
     log();

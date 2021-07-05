@@ -31,12 +31,15 @@ class picture {
         void addRotations(int n);
         void updateMasks();
         void scaleTo(unsigned int dpi);
+        void setEqualize(bool e);
 
-    private:
+
+private:
+        bool equalize = false;
         unsigned int currentDPI;
         unsigned int filterType;
 
-    void updateImageSet();
+        void updateImageSet();
 };
 
 

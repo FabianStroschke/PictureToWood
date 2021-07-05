@@ -9,7 +9,7 @@ cv::Mat stitchPicture(std::vector<std::vector<cell>> &patch_list);
 
 boost::mutex claimMutex;
 
-std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &source, const int stepX, const int stepY, const std::function<long(const cell &, const cell &)> &comp){
+std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, std::vector<picture> &source, const int stepX, const int stepY, const std::function<long(const cell &, const cell &)> &comp){
     auto &patches = target.patches;
     std::vector<std::vector<cell>> match(patches.size(),std::vector<cell>(patches.front().size()));
     boost::asio::thread_pool pool(boost::thread::hardware_concurrency());
@@ -20,24 +20,26 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &
             auto func = [x , y, stepX, stepY, &t, &source, &match, &comp](){
                 bool cellClaimed = false;
                 int count = 0;
-                while(not cellClaimed && count <10 ) {
+                while(not cellClaimed && count <10 ) { //limit for tries to find a patch
                     count++;
-                    cell best(&source, t.shape, 0, 0);
-                    cell cur(&source, t.shape, 0, 0);
+                    cell best(&source[0], t.shape, 0, 0);
+                    cell cur(&source[0], t.shape, 0, 0);
+                    long min = -1;
 
-
-                    long min = comp(t, best);
-                    for (int r = 0; r < source.images.size(); r++) {
-                        cur.rot = r;
-                        auto img = source.images[r].img;
-                        for (int y_i = 0; y_i < img.rows - t.height; y_i += stepY) {
-                            for (int x_i = 0; x_i < img.cols - t.width; x_i += stepX) {
-                                cur.moveTo(x_i, y_i);
-                                long diff = comp(t, cur);
-                                if ((diff < min && diff > 0) || min < 0) {
-                                    min = diff;
-                                    best = cur;
-                                    //match[x][y] = best;
+                    for (auto &s: source) {
+                        cur.source = &s;
+                        for (int r = 0; r < s.images.size(); r++) {
+                            cur.rot = r;
+                            auto img = s.images[r].img;
+                            for (int y_i = 0; y_i < img.rows - t.height; y_i += stepY) {
+                                for (int x_i = 0; x_i < img.cols - t.width; x_i += stepX) {
+                                    cur.moveTo(x_i, y_i);
+                                    long diff = comp(t, cur);
+                                    if ((diff < min && diff > 0) || min < 0) {
+                                        min = diff;
+                                        best = cur;
+                                        //match[x][y] = best;
+                                    }
                                 }
                             }
                         }
@@ -46,6 +48,7 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &
                     claimMutex.lock();
                     cellClaimed = match[x][y].claimCell();
                     claimMutex.unlock();
+
                 }
             };
             boost::asio::post(pool, func);
