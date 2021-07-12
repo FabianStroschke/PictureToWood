@@ -31,7 +31,7 @@ class picture {
         void addRotations(int n);
         void updateMasks();
         void scaleTo(unsigned int dpi);
-        void transformHistTo(cv::Mat targetHist);
+        void transformHistTo(cv::Mat targetHist, int channel);
 
 
 private:
@@ -41,7 +41,7 @@ private:
         void updateImageSet();
 };
 
-cv::Mat cumulativeHist(std::vector<picture>& picList);
+cv::Mat cumulativeHist(std::vector<picture> &picList, int channel);
 
 
 #endif //PICTURETOWOOD_PICTURE_HPP

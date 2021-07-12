@@ -151,9 +151,9 @@ void picture::scaleTo(unsigned int dpi) {
     addRotations(images.size());
 }
 
-void picture::transformHistTo(cv::Mat targetHist) {
-    auto &s = this->origImage.img_gray;
-    int channels[] = {0};
+void picture::transformHistTo(cv::Mat targetHist, int channel) {
+    auto &s = this->origImage.img;
+    int channels[] = {channel};
     int histSize[] = {255};
     float r[] = {0,256};
     const float *ranges[] = {r};
@@ -198,57 +198,24 @@ void picture::transformHistTo(cv::Mat targetHist) {
         }
     }
 
-    namedWindow("Image", WINDOW_AUTOSIZE);
-    imshow( "Image", origImage.img_gray);
-    waitKey ( 10000);//TODO replace with better solution for waiting
-
     //apply map
-    this->origImage.img_gray.forEach<uchar>(
+    cv::Mat workingChannel;
+    cv::extractChannel(this->origImage.img, workingChannel,channel);
+
+    workingChannel.forEach<uchar>(
             [map](uchar &x, const int * position){
                 x= map[x];
             });
+    cv::insertChannel(workingChannel,this->origImage.img, channel);
     this->updateImageSet();
 
-    namedWindow("Image2", WINDOW_AUTOSIZE);
-    imshow( "Image2", origImage.img_gray);
-    waitKey ( 10000);//TODO replace with better solution for waiting
-
-
-    cv::Mat newHist;
-    cv::calcHist(&(origImage.img_gray),1,channels,cv::Mat(),newHist,1,histSize, ranges, true, false);
-    cv::normalize(newHist, newHist, 1, 0, cv::NORM_L1);
-
-
-    std::vector<double> cdf_n(256);
-    cdf_n[0] = inputHist.at<float>(0);
-    for (int i = 0; i<256; i++) {
-        cdf_n[i+1] += cdf_n[i] + newHist.at<float>(i+1);
-    }
-
-    for (int i = 0; i < 256; ++i) {
-        std::cout << i << " " << cdf_t[i] << " ";
-    }
-    std::cout << "\n";
-    for (int i = 0; i < 256; ++i) {
-        std::cout << i << " " << cdf_i[i] << " ";
-    }
-    std::cout << "\n";
-    for (int i = 0; i < 256; ++i) {
-        std::cout << map[i] << " " << cdf_i[i] << " ";
-    }
-    std::cout << "\n";
-
-    for (int i = 0; i < 256; ++i) {
-        std::cout << i << " " << cdf_n[i]-0.02 << " ";
-    }
-    std::cout << "\n";
 }
 
-cv::Mat cumulativeHist(std::vector<picture>& picList){
+cv::Mat cumulativeHist(std::vector<picture> &picList, int channel) {
     cv::Mat hist;
     for (auto &p : picList) {
-        auto &s = p.origImage.img_gray;
-        int channels[] = {0};
+        auto &s = p.origImage.img;
+        int channels[] = {channel};
         int histSize[] = {255};
         float r[] = {0,256};
         const float *ranges[] = {r};

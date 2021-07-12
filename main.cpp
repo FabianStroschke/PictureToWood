@@ -46,11 +46,13 @@ int main( int argc, char ** argv ) {
         texture_list.back().addRotations(config["rotations"]);
     }
 
-    std::cout << cumulativeHist(texture_list) << "\n";
+    std::cout << cumulativeHist(texture_list, 0) << "\n";
     cv::Mat t;
-    cv::normalize(cumulativeHist(texture_list),t,255,0,cv::NORM_L1);
+    cv::normalize(cumulativeHist(texture_list, 0), t, 255, 0, cv::NORM_L1);
 
-    target.transformHistTo(cumulativeHist(texture_list));
+    target.transformHistTo(cumulativeHist(texture_list, 0), 0);
+    target.transformHistTo(cumulativeHist(texture_list, 1), 1);
+    target.transformHistTo(cumulativeHist(texture_list, 2), 2);
 
     auto plist = patch_list(target,config["patchSize"]["x"],config["patchSize"]["y"]);
 
