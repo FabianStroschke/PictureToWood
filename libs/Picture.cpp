@@ -247,7 +247,7 @@ void picture::transformHistTo(cv::Mat targetHist) {
 cv::Mat cumulativeHist(std::vector<picture>& picList){
     cv::Mat hist;
     for (auto &p : picList) {
-        auto &s = p.origImage.img;
+        auto &s = p.origImage.img_gray;
         int channels[] = {0};
         int histSize[] = {255};
         float r[] = {0,256};

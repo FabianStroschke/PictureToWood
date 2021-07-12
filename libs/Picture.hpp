@@ -18,7 +18,6 @@ struct image_set{
     cv::Mat mask;
 };
 
-
 class picture {
     public:
         std::string name;
