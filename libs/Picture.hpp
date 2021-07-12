@@ -18,12 +18,13 @@ struct image_set{
     cv::Mat mask;
 };
 
+
 class picture {
     public:
         std::string name;
         std::vector<struct image_set> images;
         unsigned int origDPI;
-        cv::Mat origImage;
+        struct image_set origImage;
 
         explicit picture(const std::string &path, unsigned int dpi);
         void show() const;
@@ -31,16 +32,17 @@ class picture {
         void addRotations(int n);
         void updateMasks();
         void scaleTo(unsigned int dpi);
-        void setEqualize(bool e);
+        void transformHistTo(cv::Mat targetHist);
 
 
 private:
-        bool equalize = false;
         unsigned int currentDPI;
         unsigned int filterType;
 
         void updateImageSet();
 };
+
+cv::Mat cumulativeHist(std::vector<picture>& picList);
 
 
 #endif //PICTURETOWOOD_PICTURE_HPP

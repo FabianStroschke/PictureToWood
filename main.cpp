@@ -37,7 +37,7 @@ int main( int argc, char ** argv ) {
     nlohmann::json config  = readJSON(argv);
 
     picture target(config["offset"].get<std::string>() + config["target"]["path"].get<std::string>(), config["target"]["dpi"]);
-    target.setEqualize(true);
+
 
     std::vector<picture> texture_list;
     for (auto & e : config["woodTextures"]) {
@@ -45,6 +45,12 @@ int main( int argc, char ** argv ) {
         texture_list.back().scaleTo(target.origDPI);
         texture_list.back().addRotations(config["rotations"]);
     }
+
+    std::cout << cumulativeHist(texture_list) << "\n";
+    cv::Mat t;
+    cv::normalize(cumulativeHist(texture_list),t,255,0,cv::NORM_L1);
+
+    target.transformHistTo(cumulativeHist(texture_list));
 
     auto plist = patch_list(target,config["patchSize"]["x"],config["patchSize"]["y"]);
 

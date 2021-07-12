@@ -62,11 +62,11 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, std::vect
             namedWindow("Final Image", cv::WINDOW_AUTOSIZE);
             imshow( "Final Image", out);
 
-            //cv::Mat maskedImg;
-            //cv::bitwise_and(source.images[0].img_gray,source.images[0].mask,maskedImg);
+            cv::Mat maskedImg;
+            cv::bitwise_and(source.back().images[0].img_gray,source.back().images[0].mask,maskedImg);
 
-            //namedWindow("Cut", cv::WINDOW_AUTOSIZE);
-            //imshow( "Cut", maskedImg);
+            namedWindow("Cut", cv::WINDOW_AUTOSIZE);
+            imshow( "Cut", maskedImg);
         }
     }
     pool.join();

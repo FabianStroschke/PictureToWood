@@ -37,7 +37,8 @@ void picture::show() const {
 void picture::loadImg(const std::string &path, int filter_type, unsigned int dpi) {
     try {
         String file_path = samples::findFile(path);
-        this->origImage = imread(file_path, IMREAD_COLOR);
+        this->origImage.img = imread(file_path, IMREAD_COLOR);
+        this->origImage.img_gray = imread(file_path, IMREAD_GRAYSCALE);
         this->origDPI = dpi;
         this->currentDPI = dpi;
         this->filterType = filter_type;
@@ -51,18 +52,17 @@ void picture::loadImg(const std::string &path, int filter_type, unsigned int dpi
 }
 
 void picture::updateImageSet() {
-    images[0].img = origImage.clone() ;
+    images[0].img = origImage.img.clone() ;
+    images[0].img_gray = origImage.img_gray.clone() ;
     if(currentDPI != origDPI){
         double scale = (double) currentDPI/origDPI;
         if(scale>1.0){
             resize(this->images[0].img, this->images[0].img, Size(), scale, scale, cv::INTER_CUBIC);
+            resize(this->images[0].img_gray, this->images[0].img_gray, Size(), scale, scale, cv::INTER_CUBIC);
         }else{
             resize(this->images[0].img, this->images[0].img, Size(), scale, scale, cv::INTER_AREA);
+            resize(this->images[0].img_gray, this->images[0].img_gray, Size(), scale, scale, cv::INTER_AREA);
         }
-    }
-    cvtColor(images[0].img, images[0].img_gray, COLOR_BGR2GRAY);
-    if(equalize){
-        equalizeHist(images[0].img_gray, images[0].img_gray);
     }
 
     switch(this->filterType){
@@ -151,7 +151,110 @@ void picture::scaleTo(unsigned int dpi) {
     addRotations(images.size());
 }
 
-void picture::setEqualize(bool e) {
-    this->equalize = e;
-    updateImageSet();
+void picture::transformHistTo(cv::Mat targetHist) {
+    auto &s = this->origImage.img_gray;
+    int channels[] = {0};
+    int histSize[] = {255};
+    float r[] = {0,256};
+    const float *ranges[] = {r};
+
+    cv::Mat inputHist;
+    cv::calcHist(&s, 1, channels, cv::Mat(), inputHist, 1, histSize, ranges, true, false);
+
+    //normalize
+    cv::normalize(targetHist, targetHist, 1, 0, cv::NORM_L1);
+    cv::normalize(inputHist, inputHist, 1, 0, cv::NORM_L1);
+
+    //generate cdfs
+    std::vector<double> cdf_t(256);
+    std::vector<double> cdf_i(256);
+
+    cdf_t[0] = targetHist.at<float>(0);
+    cdf_i[0] = inputHist.at<float>(0);
+    for (int j = 0; j < 256; j++) {
+        cdf_t[j + 1] += cdf_t[j] + targetHist.at<float>(j + 1);
+        cdf_i[j + 1] += cdf_i[j] + inputHist.at<float>(j + 1);
+    }
+
+
+    std::vector<uchar> T_target(256);
+    std::vector<uchar> T_input(256);
+    for (int j = 0; j<256; j++) {
+        T_target[j] = floor(255 * cdf_t[j]);
+        T_input[j] = floor(255 * cdf_i[j]);
+    }
+
+    //create mapping
+    std::vector<int> map(256);
+
+    for (int i = 0; i < 256; ++i) {
+        int diff = abs(T_input[i]-T_target[0]);
+        map[i] = 0;
+        for (int j = 0; j < 256; ++j) {
+            if(abs(T_input[i]-T_target[j])<diff){
+                map[i] = j;
+                diff = abs(T_input[i]-T_target[j]);
+            }
+        }
+    }
+
+    namedWindow("Image", WINDOW_AUTOSIZE);
+    imshow( "Image", origImage.img_gray);
+    waitKey ( 10000);//TODO replace with better solution for waiting
+
+    //apply map
+    this->origImage.img_gray.forEach<uchar>(
+            [map](uchar &x, const int * position){
+                x= map[x];
+            });
+    this->updateImageSet();
+
+    namedWindow("Image2", WINDOW_AUTOSIZE);
+    imshow( "Image2", origImage.img_gray);
+    waitKey ( 10000);//TODO replace with better solution for waiting
+
+
+    cv::Mat newHist;
+    cv::calcHist(&(origImage.img_gray),1,channels,cv::Mat(),newHist,1,histSize, ranges, true, false);
+    cv::normalize(newHist, newHist, 1, 0, cv::NORM_L1);
+
+
+    std::vector<double> cdf_n(256);
+    cdf_n[0] = inputHist.at<float>(0);
+    for (int i = 0; i<256; i++) {
+        cdf_n[i+1] += cdf_n[i] + newHist.at<float>(i+1);
+    }
+
+    for (int i = 0; i < 256; ++i) {
+        std::cout << i << " " << cdf_t[i] << " ";
+    }
+    std::cout << "\n";
+    for (int i = 0; i < 256; ++i) {
+        std::cout << i << " " << cdf_i[i] << " ";
+    }
+    std::cout << "\n";
+    for (int i = 0; i < 256; ++i) {
+        std::cout << map[i] << " " << cdf_i[i] << " ";
+    }
+    std::cout << "\n";
+
+    for (int i = 0; i < 256; ++i) {
+        std::cout << i << " " << cdf_n[i]-0.02 << " ";
+    }
+    std::cout << "\n";
+}
+
+cv::Mat cumulativeHist(std::vector<picture>& picList){
+    cv::Mat hist;
+    for (auto &p : picList) {
+        auto &s = p.origImage.img;
+        int channels[] = {0};
+        int histSize[] = {255};
+        float r[] = {0,256};
+        const float *ranges[] = {r};
+
+        cv::calcHist(&s,1,channels,cv::Mat(),hist,1,histSize, ranges, true, true);
+
+    }
+    return hist;
 }
