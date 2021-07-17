@@ -25,9 +25,8 @@ class picture {
         unsigned int origDPI;
         struct image_set origImage;
 
-        explicit picture(const std::string &path, unsigned int dpi);
+        picture(const std::string &path, unsigned int dpi, int filter_type, double filter_ratio);
         void show() const;
-        void loadImg(const std::string &path, int filter_type, unsigned int dpi);
         void addRotations(int n);
         void updateMasks();
         void scaleTo(unsigned int dpi);
@@ -37,7 +36,7 @@ class picture {
 private:
         unsigned int currentDPI;
         unsigned int filterType;
-
+        double filter_ratio;
         void updateImageSet();
 };
 

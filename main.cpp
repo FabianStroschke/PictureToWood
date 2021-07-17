@@ -36,19 +36,17 @@ int main( int argc, char ** argv ) {
     checkInputs(argc,argv);
     nlohmann::json config  = readJSON(argv);
 
-    picture target(config["offset"].get<std::string>() + config["target"]["path"].get<std::string>(), config["target"]["dpi"]);
+    auto t = config["target"];
+    picture target(config["offset"].get<std::string>() + t["path"].get<std::string>(),
+                   t["dpi"], config["filter_type"], config["filter_intens_ratio"]);
 
 
     std::vector<picture> texture_list;
     for (auto & e : config["woodTextures"]) {
-        texture_list.emplace_back(config["offset"].get<std::string>() + e["path"].get<std::string>(), e["dpi"]);
+        texture_list.emplace_back(config["offset"].get<std::string>() + e["path"].get<std::string>(), e["dpi"], config["filter_type"], config["filter_intens_ratio"]);
         texture_list.back().scaleTo(target.origDPI);
         texture_list.back().addRotations(config["rotations"]);
     }
-
-    std::cout << cumulativeHist(texture_list, 0) << "\n";
-    cv::Mat t;
-    cv::normalize(cumulativeHist(texture_list, 0), t, 255, 0, cv::NORM_L1);
 
     target.transformHistTo(cumulativeHist(texture_list, 0), 0);
     target.transformHistTo(cumulativeHist(texture_list, 1), 1);

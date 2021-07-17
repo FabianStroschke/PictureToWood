@@ -6,16 +6,6 @@
 using namespace cv;
 
 /**
- * Load the Image specified by path into the picture object.
- * @param path Absolute path or relative path from the working directory.
- * @return Creates a picture Object containing the colored and grayscale version of the image.
- */
-picture::picture(const std::string &path, unsigned int dpi) {
-    this->images.resize(1);
-    this->loadImg(path, 0, dpi);
-}
-
-/**
  * Show the colored and grayscale version of the image.
  */
 void picture::show() const {
@@ -34,7 +24,8 @@ void picture::show() const {
  * Load the Image specified by path into the picture object, replacing the current images and replacing the name with the new file name.
  * @param path Absolute path or relative path from the working directory.
  */
-void picture::loadImg(const std::string &path, int filter_type, unsigned int dpi) {
+picture::picture(const std::string &path, unsigned int dpi, int filter_type, double filter_ratio) {
+    this->images.resize(1);
     try {
         String file_path = samples::findFile(path);
         this->origImage.img = imread(file_path, IMREAD_COLOR);
@@ -43,7 +34,7 @@ void picture::loadImg(const std::string &path, int filter_type, unsigned int dpi
         this->currentDPI = dpi;
         this->filterType = filter_type;
         this->name = file_path.substr(file_path.find_last_of('/')+1, file_path.find_first_of('.') - file_path.find_last_of('/')-1);
-
+        this->filter_ratio = filter_ratio;
         updateImageSet();
 
     }catch (const std::exception& e) {
@@ -96,6 +87,7 @@ void picture::updateImageSet() {
             std::cout << "Ignoring filter";
             break;
     }
+    images[0].img_filter = images[0].img_filter * this->filter_ratio + images[0].img_gray * (1-this->filter_ratio);
     images[0].mask = Mat(images[0].img_gray.rows, images[0].img_gray.cols , images[0].img_gray.type(), 255);
 }
 
