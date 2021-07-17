@@ -9,7 +9,7 @@ cv::Mat stitchPicture(std::vector<std::vector<cell>> &patch_list);
 
 boost::mutex claimMutex;
 
-std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &source, const std::function<long(const cell &, const cell &)> &comp){
+std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, std::vector<picture> &source, const int stepX, const int stepY, const std::function<long(const cell &, const cell &)> &comp){
     auto &patches = target.patches;
     std::vector<std::vector<cell>> match(patches.size(),std::vector<cell>(patches.front().size()));
     boost::asio::thread_pool pool(boost::thread::hardware_concurrency());
@@ -17,27 +17,29 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &
         for(int y = 0; y < patches[x].size(); y++){
             const cell& t = patches[x][y];
 
-            auto func = [x , y, &t, &source, &match, &comp](){
+            auto func = [x , y, stepX, stepY, &t, &source, &match, &comp](){
                 bool cellClaimed = false;
                 int count = 0;
-                while(not cellClaimed && count <10 ) {
+                while(not cellClaimed && count <10 ) { //limit for tries to find a patch
                     count++;
-                    cell best(&source, t.shape, 0, 0);
-                    cell cur(&source, t.shape, 0, 0);
+                    cell best(&source[0], t.shape, 0, 0);
+                    cell cur(&source[0], t.shape, 0, 0);
+                    long min = -1;
 
-
-                    long min = comp(t, best);
-                    for (int r = 0; r < source.images.size(); r++) {
-                        cur.rot = r;
-                        auto img = source.images[r].img;
-                        for (int y_i = 0; y_i < img.rows - t.height; y_i += 20) {
-                            for (int x_i = 0; x_i < img.cols - t.width; x_i += 20) {
-                                cur.moveTo(x_i, y_i);
-                                long diff = comp(t, cur);
-                                if ((diff < min && diff > 0) || min < 0) {
-                                    min = diff;
-                                    best = cur;
-                                    //match[x][y] = best;
+                    for (auto &s: source) {
+                        cur.source = &s;
+                        for (int r = 0; r < s.images.size(); r++) {
+                            cur.rot = r;
+                            auto img = s.images[r].img;
+                            for (int y_i = 0; y_i < img.rows - t.height; y_i += stepY) {
+                                for (int x_i = 0; x_i < img.cols - t.width; x_i += stepX) {
+                                    cur.moveTo(x_i, y_i);
+                                    long diff = comp(t, cur);
+                                    if ((diff < min && diff > 0) || min < 0) {
+                                        min = diff;
+                                        best = cur;
+                                        //match[x][y] = best;
+                                    }
                                 }
                             }
                         }
@@ -46,6 +48,7 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &
                     claimMutex.lock();
                     cellClaimed = match[x][y].claimCell();
                     claimMutex.unlock();
+
                 }
             };
             boost::asio::post(pool, func);
@@ -59,11 +62,11 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &
             namedWindow("Final Image", cv::WINDOW_AUTOSIZE);
             imshow( "Final Image", out);
 
-            //cv::Mat maskedImg;
-            //cv::bitwise_and(source.images[0].img_gray,source.images[0].mask,maskedImg);
+            cv::Mat maskedImg;
+            cv::bitwise_and(source.back().images[0].img_gray,source.back().images[0].mask,maskedImg);
 
-            //namedWindow("Cut", cv::WINDOW_AUTOSIZE);
-            //imshow( "Cut", maskedImg);
+            namedWindow("Cut", cv::WINDOW_AUTOSIZE);
+            imshow( "Cut", maskedImg);
         }
     }
     pool.join();
@@ -73,17 +76,14 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, picture &
 long compareFilter(const cell& a, const cell& b){
     long sum = 0;
     for(int y = 0; y<a.height; y++){
-        uchar *aPtr = a.source->images[a.rot].img_gray.ptr(a.y+y, a.x);
-        uchar *bPtr = b.source->images[b.rot].img_gray.ptr(b.y+y, b.x);
         uchar *aPtrFilter = a.source->images[a.rot].img_filter.ptr(a.y+y, a.x);
         uchar *bPtrFilter = b.source->images[b.rot].img_filter.ptr(b.y+y, b.x);
         uchar *aPtrMask = a.source->images[a.rot].mask.ptr(a.y+y, a.x);
         uchar *bPtrMask = b.source->images[b.rot].mask.ptr(b.y+y, b.x);
-        for(int x = 0; x<a.width; x++,aPtr++, bPtr++, aPtrMask++, bPtrMask++, aPtrFilter++, bPtrFilter++){
+        for(int x = 0; x<a.width; x++, aPtrMask++, bPtrMask++, aPtrFilter++, bPtrFilter++){
             if(*aPtrMask == 0 || *bPtrMask ==0) return -1;
-            auto diff1 = (*aPtr - *bPtr);
-            auto diff2 = (*aPtrFilter - *bPtrFilter);
-            sum += 0.5*(diff1*diff1) + 0.5*(diff2*diff2);
+            auto diff = (*aPtrFilter - *bPtrFilter);
+            sum += diff*diff;
         }
     }
     return sum;

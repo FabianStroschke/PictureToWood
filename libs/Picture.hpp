@@ -22,13 +22,25 @@ class picture {
     public:
         std::string name;
         std::vector<struct image_set> images;
+        unsigned int origDPI;
+        struct image_set origImage;
 
-        explicit picture(char *path);
+        picture(const std::string &path, unsigned int dpi, int filter_type, double filter_ratio);
         void show() const;
-        void loadImg(char *path, int filter_type);
         void addRotations(int n);
         void updateMasks();
+        void scaleTo(unsigned int dpi);
+        void transformHistTo(cv::Mat targetHist, int channel);
+
+
+private:
+        unsigned int currentDPI;
+        unsigned int filterType;
+        double filter_ratio;
+        void updateImageSet();
 };
+
+cv::Mat cumulativeHist(std::vector<picture> &picList, int channel);
 
 
 #endif //PICTURETOWOOD_PICTURE_HPP

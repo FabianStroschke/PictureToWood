@@ -6,16 +6,6 @@
 using namespace cv;
 
 /**
- * Load the Image specified by path into the picture object.
- * @param path Absolute path or relative path from the working directory.
- * @return Creates a picture Object containing the colored and grayscale version of the image.
- */
-picture::picture(char *path) {
-    this->images.resize(1);
-    this->loadImg(path, 0);
-}
-
-/**
  * Show the colored and grayscale version of the image.
  */
 void picture::show() const {
@@ -34,49 +24,71 @@ void picture::show() const {
  * Load the Image specified by path into the picture object, replacing the current images and replacing the name with the new file name.
  * @param path Absolute path or relative path from the working directory.
  */
-void picture::loadImg(char *path, int filter_type) {
+picture::picture(const std::string &path, unsigned int dpi, int filter_type, double filter_ratio) {
+    this->images.resize(1);
     try {
         String file_path = samples::findFile(path);
-        this->images[0].img = imread(file_path, IMREAD_COLOR);
-        cv::Mat gray = imread(file_path, IMREAD_GRAYSCALE);
-        cv::equalizeHist(gray, this->images[0].img_gray);
-
-        switch(filter_type){
-            case 0:
-            {
-                cv::Mat sobelX;
-                cv::Mat sobelY;
-                cv::Sobel(this->images[0].img_gray, sobelX,CV_16S,1,0,3);
-                cv::Sobel(this->images[0].img_gray, sobelY,CV_16S,0,1,3);
-
-                // converting back to CV_8U
-                cv::Mat absX;
-                cv::Mat absY;
-                convertScaleAbs(sobelX, absX);
-                convertScaleAbs(sobelY, absY);
-
-                addWeighted(absX, 0.5, absY, 0.5, 0, this->images[0].img_filter);
-
-                break;
-            }
-            case 1:
-                cv::Canny(this->images[0].img_gray, this->images[0].img_filter, 255/3, 255);
-                break;
-            case 2: {
-                cv::Mat filter16S;
-                cv::Laplacian(this->images[0].img_gray, filter16S, CV_16S);
-                convertScaleAbs(filter16S, this->images[0].img_filter);
-                break;
-            }
-            default:
-                std::cout << "Ignoring filter";
-                break;
-        }
-        this->images[0].mask = cv::Mat(this->images[0].img_gray.rows, this->images[0].img_gray.cols ,this->images[0].img_gray.type(),255);
+        this->origImage.img = imread(file_path, IMREAD_COLOR);
+        this->origImage.img_gray = imread(file_path, IMREAD_GRAYSCALE);
+        this->origDPI = dpi;
+        this->currentDPI = dpi;
+        this->filterType = filter_type;
         this->name = file_path.substr(file_path.find_last_of('/')+1, file_path.find_first_of('.') - file_path.find_last_of('/')-1);
+        this->filter_ratio = filter_ratio;
+        updateImageSet();
+
     }catch (const std::exception& e) {
         std::cout << "Could not read image because of:\n" << e.what();
     }
+}
+
+void picture::updateImageSet() {
+    images[0].img = origImage.img.clone() ;
+    images[0].img_gray = origImage.img_gray.clone() ;
+    if(currentDPI != origDPI){
+        double scale = (double) currentDPI/origDPI;
+        if(scale>1.0){
+            resize(this->images[0].img, this->images[0].img, Size(), scale, scale, cv::INTER_CUBIC);
+            resize(this->images[0].img_gray, this->images[0].img_gray, Size(), scale, scale, cv::INTER_CUBIC);
+        }else{
+            resize(this->images[0].img, this->images[0].img, Size(), scale, scale, cv::INTER_AREA);
+            resize(this->images[0].img_gray, this->images[0].img_gray, Size(), scale, scale, cv::INTER_AREA);
+        }
+    }
+
+    switch(this->filterType){
+        case 0:
+        {
+            Mat sobelX;
+            Mat sobelY;
+            Sobel(images[0].img_gray, sobelX, CV_16S, 1, 0, 3);
+            Sobel(images[0].img_gray, sobelY, CV_16S, 0, 1, 3);
+
+            // converting back to CV_8U
+            Mat absX;
+            Mat absY;
+            convertScaleAbs(sobelX, absX);
+            convertScaleAbs(sobelY, absY);
+
+            addWeighted(absX, 0.5, absY, 0.5, 0, images[0].img_filter);
+
+            break;
+        }
+        case 1:
+            Canny(images[0].img_gray, images[0].img_filter, 255 / 3, 255);
+            break;
+        case 2: {
+            Mat filter16S;
+            Laplacian(images[0].img_gray, filter16S, CV_16S);
+            convertScaleAbs(filter16S, images[0].img_filter);
+            break;
+        }
+        default:
+            std::cout << "Ignoring filter";
+            break;
+    }
+    images[0].img_filter = images[0].img_filter * this->filter_ratio + images[0].img_gray * (1-this->filter_ratio);
+    images[0].mask = Mat(images[0].img_gray.rows, images[0].img_gray.cols , images[0].img_gray.type(), 255);
 }
 
 void picture::addRotations(int n) {
@@ -123,4 +135,85 @@ void picture::updateMasks() {
 
         cv::warpAffine(src, pair.mask, rot, bbox.size());
     }
+}
+
+void picture::scaleTo(unsigned int dpi) {
+    this->currentDPI = dpi;
+    updateImageSet();
+    addRotations(images.size());
+}
+
+void picture::transformHistTo(cv::Mat targetHist, int channel) {
+    auto &s = this->origImage.img;
+    int channels[] = {channel};
+    int histSize[] = {255};
+    float r[] = {0,256};
+    const float *ranges[] = {r};
+
+    cv::Mat inputHist;
+    cv::calcHist(&s, 1, channels, cv::Mat(), inputHist, 1, histSize, ranges, true, false);
+
+    //normalize
+    cv::normalize(targetHist, targetHist, 1, 0, cv::NORM_L1);
+    cv::normalize(inputHist, inputHist, 1, 0, cv::NORM_L1);
+
+    //generate cdfs
+    std::vector<double> cdf_t(256);
+    std::vector<double> cdf_i(256);
+
+    cdf_t[0] = targetHist.at<float>(0);
+    cdf_i[0] = inputHist.at<float>(0);
+    for (int j = 0; j < 256; j++) {
+        cdf_t[j + 1] += cdf_t[j] + targetHist.at<float>(j + 1);
+        cdf_i[j + 1] += cdf_i[j] + inputHist.at<float>(j + 1);
+    }
+
+
+    std::vector<uchar> T_target(256);
+    std::vector<uchar> T_input(256);
+    for (int j = 0; j<256; j++) {
+        T_target[j] = floor(255 * cdf_t[j]);
+        T_input[j] = floor(255 * cdf_i[j]);
+    }
+
+    //create mapping
+    std::vector<int> map(256);
+
+    for (int i = 0; i < 256; ++i) {
+        int diff = abs(T_input[i]-T_target[0]);
+        map[i] = 0;
+        for (int j = 0; j < 256; ++j) {
+            if(abs(T_input[i]-T_target[j])<diff){
+                map[i] = j;
+                diff = abs(T_input[i]-T_target[j]);
+            }
+        }
+    }
+
+    //apply map
+    cv::Mat workingChannel;
+    cv::extractChannel(this->origImage.img, workingChannel,channel);
+
+    workingChannel.forEach<uchar>(
+            [map](uchar &x, const int * position){
+                x= map[x];
+            });
+    cv::insertChannel(workingChannel,this->origImage.img, channel);
+    this->updateImageSet();
+
+}
+
+cv::Mat cumulativeHist(std::vector<picture> &picList, int channel) {
+    cv::Mat hist;
+    for (auto &p : picList) {
+        auto &s = p.origImage.img;
+        int channels[] = {channel};
+        int histSize[] = {255};
+        float r[] = {0,256};
+        const float *ranges[] = {r};
+
+        cv::calcHist(&s,1,channels,cv::Mat(),hist,1,histSize, ranges, true, true);
+
+    }
+    return hist;
 }
