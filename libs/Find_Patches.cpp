@@ -3,7 +3,6 @@
 //
 
 #include "Find_Patches.hpp"
-#include "Patch_List.hpp"
 
 cv::Mat stitchPicture(std::vector<std::vector<cell>> &patch_list);
 
@@ -13,26 +12,69 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, std::vect
     auto &patches = target.patches;
     std::vector<std::vector<cell>> match(patches.size(),std::vector<cell>(patches.front().size()));
     boost::asio::thread_pool pool(boost::thread::hardware_concurrency());
+    std::vector<cv::Point3d> score;
+    score.reserve((patches.size() * patches[0].size()));
     std::vector<cv::Point3i> prio_map;
-    prio_map.reserve((patches.size()*patches[0].size()));
+    prio_map.reserve((patches.size() * patches[0].size()));
     int offsetX = patches.size()/2;
     int offsetY = patches[0].size()/2;
 
+    cv::Mat salMat;
+    cv::saliency::StaticSaliencyFineGrained s;
+    s.computeSaliency(target.patches[0][0].source->images[0].img, salMat);
+
+    double maxDist = 0;
+    double maxSal = 0;
+
     for(int x = 0; x < patches.size(); x++){
         for(int y = 0; y < patches[x].size(); y++) {
-            prio_map.emplace_back(x,y,abs(x-offsetX) + abs(y-offsetY));
+            double dist = abs(x-offsetX) + abs(y-offsetY);
+
+            if(dist > maxDist){
+                maxDist = dist;
+            }
+
+            //compute detail score
+            cell &c = target.patches[x][y];
+            cv::Rect rec(c.x,c.y,c.width,c.height);
+            cv::Mat data = salMat(rec);
+            if(c.shape){
+                data.copyTo(data,*c.shape);
+            }
+
+            double sal =  *cv::sum(data).val;
+            if(sal > maxSal){
+                maxSal = sal;
+            }
+            score.emplace_back(dist, sal,0);
         }
     }
+
+    for (auto &e:score) {
+        e.x = 1-(e.x / maxDist);
+        e.y = e.y / maxSal;
+        e.z = (e.x+e.y)*score.size();
+    }
+
+    for(int x = 0; x < patches.size(); x++){
+        for(int y = 0; y < patches[x].size(); y++) {
+            prio_map.emplace_back(x,y,score[x * (patches[x].size()) +y].z);
+        }
+    }
+
     auto compPrio = [](const cv::Point3i& p1, const cv::Point3i& p2){
-        return p1.z < p2.z;
+        return p1.z > p2.z;
     };
     std::sort(prio_map.begin(), prio_map.end(), compPrio);
+
+    unsigned long openProcesses = prio_map.size();
+
     for(auto &p: prio_map){
         int x = p.x;
         int y = p.y;
         const cell& t = patches[x][y];
 
-            auto func = [x , y, stepX, stepY, &t, &source, &match, &comp](){
+            auto func = [x , y, stepX, stepY, &t, &source, &match, &comp, &openProcesses](){
                 bool cellClaimed = false;
                 int count = 0;
                 while(not cellClaimed && count <10 ) { //limit for tries to find a patch
@@ -65,12 +107,15 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, std::vect
                 claimMutex.unlock();
 
             }
+            claimMutex.lock();
+            openProcesses--;
+            claimMutex.unlock();
         };
         boost::asio::post(pool, func);
     }
 
 
-    while(match.back().back().source == nullptr){
+    while(openProcesses>0){
         cv::waitKey(20);
         auto out = stitchPicture(match);
         if(not out.empty()){
