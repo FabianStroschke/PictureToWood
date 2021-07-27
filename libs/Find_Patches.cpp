@@ -7,6 +7,7 @@
 cv::Mat stitchPicture(std::vector<std::vector<cell>> &patch_list);
 
 boost::mutex claimMutex;
+boost::mutex finishMutex;
 
 std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, std::vector<picture> &source, const int stepX, const int stepY, const std::function<long(const cell &, const cell &)> &comp){
     auto &patches = target.patches;
@@ -107,9 +108,9 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, std::vect
                 claimMutex.unlock();
 
             }
-            claimMutex.lock();
+            finishMutex.lock();
             openProcesses--;
-            claimMutex.unlock();
+            finishMutex.unlock();
         };
         boost::asio::post(pool, func);
     }
