@@ -47,7 +47,6 @@ int main( int argc, char ** argv ) {
         texture_list.back().scaleTo(target.origDPI);
         texture_list.back().addRotations(config["rotations"]);
     }
-
     target.transformHistTo(cumulativeHist(texture_list, 0), 0);
     target.transformHistTo(cumulativeHist(texture_list, 1), 1);
     target.transformHistTo(cumulativeHist(texture_list, 2), 2);

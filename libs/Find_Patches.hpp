@@ -16,7 +16,7 @@
 #include "Cell.hpp"
 #include "Picture.hpp"
 #include "Patch_List.hpp"
-
+#include <opencv2/saliency.hpp>
 
 long compareFilter(const cell& a, const cell& b);
 long compareGray(const cell& a, const cell& b);
