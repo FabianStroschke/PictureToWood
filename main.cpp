@@ -2,7 +2,7 @@
 #include <Find_Patches.hpp>
 #include <Time_Measure.hpp>
 #include <Patch_List.hpp>
-#include <nlohmann/json.hpp>
+#include "json.hpp"
 
 void checkInputs(int argc, char ** argv){
     if(argc != 2){
