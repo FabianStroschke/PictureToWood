@@ -193,7 +193,9 @@ patch_list::patch_list(picture &p, Pattern &ptrn, alignment align) {
             //create patch and put it into list
             auto pos = pattern->getPointAt(x,y);
             Shape &shapeRef = pattern->getShapeAt(x,y);
-            if(not shapeRef.size.empty()) {
+            if(not shapeRef.size.empty()
+                && shapeRef.size.width+pos.x <=patternSize.width
+                && shapeRef.size.height+pos.y <=patternSize.height) {
                 this->patches[x].push_back({cell(&p, &(shapeRef),offset.x + pos.x, offset.y + pos.y), cell()});
 
             }

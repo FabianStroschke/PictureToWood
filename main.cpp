@@ -6,8 +6,8 @@
 #include "json.hpp"
 
 void checkInputs(int argc, char ** argv){
-    if(argc != 2){
-        std::cout << "Expected 1 argument but received " << argc <<  " arguments.\n\nUsage: main <path to config.json>" << "\n";
+    if(argc < 2 || argc > 3){
+        std::cout << "Expected 1 or 2 arguments but received " << argc <<  " arguments.\n\nUsage:\nmain <path to config.json> OR \nmain <path to config.json> <path to layout.json>" << "\n";
         exit(1);
     }
     std::string filepath;
@@ -15,6 +15,14 @@ void checkInputs(int argc, char ** argv){
     if(filepath.find(".json", filepath.length()-6) == std::string::npos){
         std::cout << "Provided filepath is not a .json file." << "\n";
         exit(1);
+    }
+    if(argc == 3){
+        filepath.clear();
+        filepath.append(argv[2]);
+        if(filepath.find(".json", filepath.length()-6) == std::string::npos){
+            std::cout << "Provided filepath is not a .json file." << "\n";
+            exit(1);
+        }
     }
 }
 
@@ -39,7 +47,9 @@ int main( int argc, char ** argv ) {
 
     auto t = config["target"];
     picture target(config["offset"].get<std::string>() + t["path"].get<std::string>(),
-                   t["dpi"], config["filter_type"], config["filter_intens_ratio"]);
+                   1, config["filter_type"], config["filter_intens_ratio"]);
+    target.origDPI = (target.origImage.img.cols / t["output_width_cm"].get<double>())*2.54;
+    target.currentDPI = target.origDPI;
 
     std::vector<picture> texture_list;
     for (auto & e : config["woodTextures"]) {
@@ -47,33 +57,21 @@ int main( int argc, char ** argv ) {
         texture_list.back().scaleTo(target.origDPI);
         texture_list.back().addRotations(config["rotations"]);
     }
-    target.scaleTo(150);
+
     target.transformHistTo(cumulativeHist(texture_list, 0), 0);
     target.transformHistTo(cumulativeHist(texture_list, 1), 1);
     target.transformHistTo(cumulativeHist(texture_list, 2), 2);
 
-    /**TEST**/
-    char str[] = "./input/layout.json";
-    auto test = Pattern(str);
-    test.scalePattern(2,2);
+    //read pattern
+    Pattern pattern;
+    if(argc == 3){
+        pattern = Pattern(argv[2]);
 
-    cv::Mat shape(config["patchSize"]["y"],config["patchSize"]["x"], CV_8U, cv::Scalar(0));
-    std::vector<cv::Point> pts;
-    pts.emplace_back(0,0);
-    pts.emplace_back(40,0);
-    pts.emplace_back(60,20);
-    pts.emplace_back(40,40);
-    pts.emplace_back(0,40);
-    pts.emplace_back(20,20);
-
-    cv::fillConvexPoly(shape,pts,255);
-
-    auto plist = patch_list(target,test);
-
-
-    /**TEST END**/
-
-    //auto plist = patch_list(target,config["patchSize"]["y"],config["patchSize"]["x"]);
+    }else{
+        pattern = Pattern(config["offset"].get<std::string>() + config["layout_path"].get<std::string>());
+    }
+    pattern.convertToCm(target.origDPI);
+    auto plist = patch_list(target, pattern);
 
     startTimer();
     findMatchingPatches(plist, texture_list, config["stepSize"]["x"], config["stepSize"]["y"],compareFilter);

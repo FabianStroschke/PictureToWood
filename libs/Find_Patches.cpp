@@ -190,10 +190,11 @@ cv::Mat stitchPicture(patch_list &patches) {
 
    */
 
-    cv::Mat matDst(patches.size, CV_8UC3, cv::Scalar::all(0));
+    cv::Mat matDst(patches.size, CV_8UC3, cv::Scalar::all(50));
     for(auto &col:patches.patches){
         for(auto &p:col){
             if(not p.source.data.empty()) {
+                auto r = cv::Rect(p.target.x - patches.offset.x, p.target.y - patches.offset.y, p.target.width, p.target.height);
                 cv::Mat matRoi = matDst(cv::Rect(p.target.x - patches.offset.x, p.target.y - patches.offset.y, p.target.width, p.target.height));
                 p.source.data.copyTo(matRoi, p.source.shape->mask);
             }

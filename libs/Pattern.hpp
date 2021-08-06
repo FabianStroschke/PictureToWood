@@ -18,7 +18,7 @@ public:
     std::vector<std::vector<int>> layout;
 
     Pattern();
-    explicit Pattern(char *path);
+    explicit Pattern(const std::string &path);
 
     void show(int repeat = 1);
     cv::Size getGridDimension(const cv::Size& ImageDimensions);
@@ -26,6 +26,11 @@ public:
     Shape &getShapeAt(int x, int y);
     cv::Point getPointAt(int x, int y) const;
     void scalePattern(double x, double y);
+    void convertToCm(double DPI);
+
+private:
+    double width_in_cm = 0;
+    bool scale_to_cm = false;
 };
 
 

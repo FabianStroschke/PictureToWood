@@ -10,7 +10,7 @@ Pattern::Pattern() {
 }
 
 
-Pattern::Pattern(char *path) {
+Pattern::Pattern(const std::string &path) {
     std::ifstream i(path);
     nlohmann::json j;
     i >> j;
@@ -33,7 +33,10 @@ Pattern::Pattern(char *path) {
             this->layout.back().emplace_back(col);
         }
     }
+    this->scalePattern(j["scale"]["x"], j["scale"]["y"]);
 
+    this->scale_to_cm = j["convert_to_cm"]["on"];
+    this->width_in_cm = j["convert_to_cm"]["width_in_cm"];
 }
 
 void Pattern::show(int repeat) {
@@ -49,6 +52,9 @@ void Pattern::show(int repeat) {
             if(not shape.size.empty()){
                 cv::Mat matRoi = pattern(cv::Rect(x*gridStepX, y*gridStepY, shape.size.width,shape.size.height));
                 cv::fillConvexPoly(matRoi,shape.points,cv::Scalar(std::rand()%205+50,std::rand()%205+50,std::rand()%205+50));
+                namedWindow("Pattern", cv::WINDOW_AUTOSIZE);
+                imshow("Pattern", pattern);
+                cv::waitKey ( 10000);//TODO replace with better solution for waiting
             }
         }
     }
@@ -61,11 +67,7 @@ void Pattern::show(int repeat) {
 cv::Size Pattern::getGridDimension(const cv::Size& ImageDimensions) {
     int width = 0;
     int height = 0;
-    for(auto &s:shapeList){
-        if(width < s.size.width) width = s.size.width;
-        if(height < s.size.height) height = s.size.height;
-    }
-    return {(ImageDimensions.width-width)/gridStepX +1,(ImageDimensions.height-height)/gridStepY+1};
+    return {ImageDimensions.width/gridStepX,ImageDimensions.height/gridStepY};
 }
 
 Shape &Pattern::getShapeAt(int x, int y) {
@@ -79,6 +81,8 @@ cv::Point Pattern::getPointAt(int x, int y) const {
 }
 
 void Pattern::scalePattern(double x, double y) {
+    x = std::floor(gridStepX*x)/gridStepX;
+    y = std::floor(gridStepY*y)/gridStepY;
     gridStepX *= x;
     gridStepY *= y;
 
@@ -89,6 +93,19 @@ void Pattern::scalePattern(double x, double y) {
 
 cv::Size Pattern::getPatternSize(const cv::Size &ImageDimensions) {
     return {(ImageDimensions.width/gridStepX)*gridStepX,(ImageDimensions.height/gridStepY)*gridStepY};
+}
+
+void Pattern::convertToCm(double DPI) {
+    if(!scale_to_cm) return;
+    int min = 0;
+    for (auto &shape:shapeList) {
+        if(shape.mask.cols < min || min == 0){
+            min = shape.mask.cols;
+        }
+    }
+    double DPC = DPI / 2.54;
+    double scale = (width_in_cm * DPC)/min;
+    this->scalePattern(scale,scale);
 }
 
 

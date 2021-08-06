@@ -32,8 +32,6 @@ class picture {
         void scaleTo(unsigned int dpi);
         void transformHistTo(cv::Mat targetHist, int channel);
 
-
-private:
         unsigned int currentDPI;
         unsigned int filterType;
         double filter_ratio;

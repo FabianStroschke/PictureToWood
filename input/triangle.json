@@ -1,6 +1,14 @@
 {
   "gridStepX": 20,
   "gridStepY": 10,
+  "convert_to_cm":{
+    "on": true,
+    "width_in_cm": 1
+  },
+  "scale": {
+    "x": 1,
+    "y": 1
+  },
   "Shapes": [
     [],
     [
