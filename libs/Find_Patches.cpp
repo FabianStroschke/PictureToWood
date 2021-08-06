@@ -4,14 +4,13 @@
 
 #include "Find_Patches.hpp"
 
-cv::Mat stitchPicture(std::vector<std::vector<cell>> &patch_list);
+cv::Mat stitchPicture(patch_list &patches);
 
 boost::mutex claimMutex;
 boost::mutex finishMutex;
 
-std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, std::vector<picture> &source, const int stepX, const int stepY, const std::function<long(const cell &, const cell &)> &comp){
+void findMatchingPatches(patch_list &target, std::vector<picture> &source, const int stepX, const int stepY, const std::function<long(const cell &, const cell &)> &comp){
     auto &patches = target.patches;
-    std::vector<std::vector<cell>> match(patches.size(),std::vector<cell>(patches.front().size()));
     boost::asio::thread_pool pool(boost::thread::hardware_concurrency());
     std::vector<cv::Point3d> score;
     score.reserve((patches.size() * patches[0].size()));
@@ -22,7 +21,7 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, std::vect
 
     cv::Mat salMat;
     cv::saliency::StaticSaliencyFineGrained s;
-    s.computeSaliency(target.patches[0][0].source->images[0].img, salMat);
+    s.computeSaliency(target.patches[0][0].target.source->images[0].img, salMat);
 
     double maxDist = 0;
     double maxSal = 0;
@@ -36,11 +35,11 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, std::vect
             }
 
             //compute detail score
-            cell &c = target.patches[x][y];
+            cell &c = target.patches[x][y].target;
             cv::Rect rec(c.x,c.y,c.width,c.height);
             cv::Mat data = salMat(rec);
             if(c.shape){
-                data.copyTo(data,*c.shape);
+                data.copyTo(data,c.shape->mask);
             }
 
             double sal =  *cv::sum(data).val;
@@ -73,15 +72,16 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, std::vect
     for(auto &p: prio_map){
         int x = p.x;
         int y = p.y;
-        const cell& t = patches[x][y];
+        patch& curPatch = patches[x][y];
 
-            auto func = [x , y, stepX, stepY, &t, &source, &match, &comp, &openProcesses](){
+            auto func = [x , y, stepX, stepY, &curPatch, &source,  &comp, &openProcesses](){
                 bool cellClaimed = false;
                 int count = 0;
+                auto &t = curPatch.target;
                 while(not cellClaimed && count <10 ) { //limit for tries to find a patch
                     count++;
-                    cell best(&source[0], t.shape, 0, 0);
-                    cell cur(&source[0], t.shape, 0, 0);
+                    curPatch.source = cell(&source[0], t.shape, 0, 0, t.stepWidth, t.stepHeight);
+                    cell cur(&source[0], t.shape, 0, 0, t.stepWidth, t.stepHeight);
                     long min = -1;
 
                 for (auto &s: source) {
@@ -95,16 +95,16 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, std::vect
                                 long diff = comp(t, cur);
                                 if ((diff < min && diff > 0) || min < 0) {
                                     min = diff;
-                                    best = cur;
+                                    curPatch.source = cur;
                                     //match[x][y] = best;
                                 }
                             }
                         }
                     }
                 }
-                match[x][y] = best;
+
                 claimMutex.lock();
-                cellClaimed = match[x][y].claimCell();
+                cellClaimed = curPatch.source.claimCell();
                 claimMutex.unlock();
 
             }
@@ -118,7 +118,7 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, std::vect
 
     while(openProcesses>0){
         cv::waitKey(20);
-        auto out = stitchPicture(match);
+        auto out = stitchPicture(target);
         if(not out.empty()){
             namedWindow("Final Image", cv::WINDOW_AUTOSIZE);
             imshow( "Final Image", out);
@@ -131,7 +131,6 @@ std::vector<std::vector<cell>> findMatchingPatches(patch_list &target, std::vect
         }
     }
     pool.join();
-    return match;
 }
 
 long compareFilter(const cell& a, const cell& b){
@@ -141,10 +140,14 @@ long compareFilter(const cell& a, const cell& b){
         uchar *bPtrFilter = b.source->images[b.rot].img_filter.ptr(b.y+y, b.x);
         uchar *aPtrMask = a.source->images[a.rot].mask.ptr(a.y+y, a.x);
         uchar *bPtrMask = b.source->images[b.rot].mask.ptr(b.y+y, b.x);
-        for(int x = 0; x<a.width; x++, aPtrMask++, bPtrMask++, aPtrFilter++, bPtrFilter++){
-            if(*aPtrMask == 0 || *bPtrMask ==0) return -1;
-            auto diff = (*aPtrFilter - *bPtrFilter);
-            sum += diff*diff;
+        const uchar *aPtrShape = a.shape->mask.ptr(y, 0); //shapes should be the same, maybe check if the shapes are equal before
+
+        for(int x = 0; x<a.width; x++, aPtrMask++, bPtrMask++, aPtrFilter++, bPtrFilter++, aPtrShape++){
+            if(*aPtrShape != 0){
+                if(*aPtrMask == 0 || *bPtrMask ==0) return -1;
+                auto diff = (*aPtrFilter - *bPtrFilter);
+                sum += diff*diff;
+            }
         }
     }
     return sum;
@@ -166,31 +169,33 @@ long compareGray(const cell& a, const cell& b){
 }
 
 
-cv::Mat stitchPicture(std::vector<std::vector<cell>> &patch_list) {
-    cell *c = nullptr;
-    for (auto &e:patch_list) {
-        for (auto &p:e) {
-            if(p.source != nullptr){
-                c = &p;
-                break;
-            }
-        }
-    }
-    if(c == nullptr){
-        return cv::Mat();
-    }
+cv::Mat stitchPicture(patch_list &patches) {
+    /*   cell *c = nullptr;
+       for (auto &e:patch_list) {
+           for (auto &p:e) {
+               if(p.source != nullptr){
+                   c = &p;
+                   break;
+               }
+           }
+       }
+       if(c == nullptr){
+           return cv::Mat();
+       }
 
-    int x = (int) patch_list.size();
-    int y = (int) patch_list.front().size();
-    int width = c->width;
-    int height = c->height;
+       int x = (int) patch_list.size();
+       int y = (int) patch_list.front().size();
+       int sizeX = c->width+(x-1)*c->stepWidth;
+       int sizeY = c->height+(y-1)*c->stepHeight;
 
-    cv::Mat matDst(cv::Size(width * x, height * y), c->source->images[0].img.type(), cv::Scalar::all(0));
-    for(int j = 0; j<y; j++){
-        for(int i = 0; i<x; i++){
-            if(patch_list[i][j].source != nullptr) {
-                cv::Mat matRoi = matDst(cv::Rect(width * i, height * j, width, height));
-                patch_list[i][j].data.copyTo(matRoi);
+   */
+
+    cv::Mat matDst(patches.size, CV_8UC3, cv::Scalar::all(0));
+    for(auto &col:patches.patches){
+        for(auto &p:col){
+            if(not p.source.data.empty()) {
+                cv::Mat matRoi = matDst(cv::Rect(p.target.x - patches.offset.x, p.target.y - patches.offset.y, p.target.width, p.target.height));
+                p.source.data.copyTo(matRoi, p.source.shape->mask);
             }
         }
     }
@@ -198,8 +203,8 @@ cv::Mat stitchPicture(std::vector<std::vector<cell>> &patch_list) {
     return matDst;
 }
 
-cv::Mat assembleOutput(std::vector<std::vector<cell>> &patch_list, picture &target){
-    cv::Mat matDst = stitchPicture(patch_list);
+cv::Mat assembleOutput(patch_list &patches) {
+    cv::Mat matDst = stitchPicture(patches);
 
     //checks if the output directory exist or creates
     std::string output_path = boost::filesystem::current_path().string()+ "/Output";

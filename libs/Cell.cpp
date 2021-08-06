@@ -14,16 +14,18 @@ cell::cell() {
     rot = 0;
 }
 
-cell::cell(picture *source, const cv::Mat *shape, int x, int y) : y(y), x(x), shape(shape), source(source) {
-    this->width = shape->cols;
-    this->height = shape->rows;
+cell::cell(picture *source, const Shape *shape, int x, int y, int stepX, int stepY) : stepHeight(stepY), stepWidth(stepX), y(y), x(x), shape(shape), source(source) {
+    this->width = shape->size.width;
+    this->height = shape->size.height;
     rot = 0;
 }
 
 
 void cell::show() {
     namedWindow("Cell", cv::WINDOW_AUTOSIZE);
-    auto crop = this->source->images[0].img(cv::Rect(x,y,width,height));
+    auto tmp = this->source->images[0].img(cv::Rect(x,y,width,height));
+    cv::Mat crop;
+    tmp.copyTo(crop, shape->mask);
     imshow("Cell", crop);
     cv::waitKey ( 10000);//TODO replace with better solution for waiting
 }
@@ -37,10 +39,11 @@ bool cell::claimCell() {
     if( not this->isContinuous()) return false;
 
     cv::Rect rec(x,y,width,height);
-    data = source->images[rot].img(rec);
+    auto tmp = source->images[rot].img(rec);
+    tmp.copyTo(data, shape->mask);
     cv::Mat cut(source->images[rot].mask.rows,source->images[rot].mask.cols, CV_8U,cv::Scalar(0));
-    cv::Mat matDst = cut(rec);
-    shape->copyTo(matDst);
+    cv::Mat matDst = cut(rec); //get the submatrix in cut
+    shape->mask.copyTo(matDst); //copy the cut shape into the submatrix -> copy the shape into cut at the right position
 
     auto &src = source->images[0].mask;
     cv::Mat rotatedMask;
@@ -59,8 +62,9 @@ bool cell::claimCell() {
 bool cell::isContinuous() const {
     for(int i = 0; i<this->height; i++) {
         uchar *ptr = this->source->images[this->rot].mask.ptr(this->y + i, this->x);
-        for (int j = 0; j < this->width; j++, ptr++) {
-            if (*ptr == 0) return false;
+        const uchar *ptrShape = this->shape->mask.ptr(i, 0);
+        for (int j = 0; j < this->width; j++, ptr++, ptrShape++) {
+            if (*ptr == 0 && *ptrShape != 0) return false;
         }
     }
     return true;
