@@ -20,7 +20,8 @@ public:
     Pattern();
     explicit Pattern(const std::string &path);
 
-    void show(int repeat = 1);
+    void show(int repeat);
+    void show(cv::Size ImgSize);
     cv::Size getGridDimension(const cv::Size& ImageDimensions);
     cv::Size getPatternSize(const cv::Size& ImageDimensions);
     Shape &getShapeAt(int x, int y);
@@ -31,6 +32,9 @@ public:
 private:
     double width_in_cm = 0;
     bool scale_to_cm = false;
+    bool show_on = false;
+    bool show_exit = false;
+    int show_repeat = 0;
 };
 
 

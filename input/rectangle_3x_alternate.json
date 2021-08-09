@@ -1,9 +1,14 @@
 {
   "gridStepX": 10,
   "gridStepY": 10,
+  "show": {
+    "on": false,
+    "exit": true,
+    "repeat": 3
+  },
   "convert_to_cm":{
     "on": true,
-    "width_in_cm": 1
+    "width_in_cm": 0.5
   },
   "scale": {
     "x": 1,

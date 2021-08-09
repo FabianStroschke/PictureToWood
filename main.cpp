@@ -71,6 +71,8 @@ int main( int argc, char ** argv ) {
         pattern = Pattern(config["offset"].get<std::string>() + config["layout_path"].get<std::string>());
     }
     pattern.convertToCm(target.origDPI);
+    pattern.show(cv::Size(target.origImage.img.cols,target.origImage.img.rows));
+
     auto plist = patch_list(target, pattern);
 
     startTimer();

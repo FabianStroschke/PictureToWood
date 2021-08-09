@@ -78,7 +78,7 @@ void findMatchingPatches(patch_list &target, std::vector<picture> &source, const
                 bool cellClaimed = false;
                 int count = 0;
                 auto &t = curPatch.target;
-                while(not cellClaimed && count <10 ) { //limit for tries to find a patch
+                while(not cellClaimed && count <20 ) { //limit for tries to find a patch
                     count++;
                     curPatch.source = cell(&source[0], t.shape, 0, 0, t.stepWidth, t.stepHeight);
                     cell cur(&source[0], t.shape, 0, 0, t.stepWidth, t.stepHeight);

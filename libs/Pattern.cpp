@@ -37,6 +37,10 @@ Pattern::Pattern(const std::string &path) {
 
     this->scale_to_cm = j["convert_to_cm"]["on"];
     this->width_in_cm = j["convert_to_cm"]["width_in_cm"];
+    this->show_on = j["show"]["on"];
+    this->show_exit = j["show"]["exit"];
+    this->show_repeat = j["show"]["repeat"];
+
 }
 
 void Pattern::show(int repeat) {
@@ -50,11 +54,10 @@ void Pattern::show(int repeat) {
         for (int y = 0; y < layout.size()*repeat; ++y) {
             auto shape = this->getShapeAt(x, y);
             if(not shape.size.empty()){
-                cv::Mat matRoi = pattern(cv::Rect(x*gridStepX, y*gridStepY, shape.size.width,shape.size.height));
-                cv::fillConvexPoly(matRoi,shape.points,cv::Scalar(std::rand()%205+50,std::rand()%205+50,std::rand()%205+50));
-                namedWindow("Pattern", cv::WINDOW_AUTOSIZE);
-                imshow("Pattern", pattern);
-                cv::waitKey ( 10000);//TODO replace with better solution for waiting
+                try{
+                    cv::Mat matRoi = pattern(cv::Rect(x*gridStepX, y*gridStepY, shape.size.width,shape.size.height));
+                    cv::fillConvexPoly(matRoi,shape.points,cv::Scalar(std::rand()%205+50,std::rand()%205+50,std::rand()%205+50));
+                }catch (std::exception &e){ continue;}
             }
         }
     }
@@ -99,13 +102,37 @@ void Pattern::convertToCm(double DPI) {
     if(!scale_to_cm) return;
     int min = 0;
     for (auto &shape:shapeList) {
-        if(shape.mask.cols < min || min == 0){
+        if((shape.mask.cols < min || min == 0) && shape.mask.cols > 0){
             min = shape.mask.cols;
         }
     }
     double DPC = DPI / 2.54;
     double scale = (width_in_cm * DPC)/min;
     this->scalePattern(scale,scale);
+}
+
+void Pattern::show(cv::Size ImgSize) {
+    if (show_on){
+        cv::Mat pattern(ImgSize.height, ImgSize.width,CV_8UC3,cv::Scalar(0,0,0));
+        cv::Size dims = this->getGridDimension(ImgSize);
+        for (int x = 0; x < dims.width; ++x) {
+            for (int y = 0; y < dims.height; ++y) {
+                auto shape = this->getShapeAt(x, y);
+                if(not shape.size.empty()){
+                    try{
+                        cv::Mat matRoi = pattern(cv::Rect(x*gridStepX, y*gridStepY, shape.size.width,shape.size.height));
+                        cv::fillConvexPoly(matRoi,shape.points,cv::Scalar(std::rand()%205+50,std::rand()%205+50,std::rand()%205+50));
+                    }catch (std::exception &e){ continue;}
+                }
+            }
+        }
+
+        namedWindow("Pattern", cv::WINDOW_AUTOSIZE);
+        imshow("Pattern", pattern);
+        cv::waitKey ( 10000);//TODO replace with better solution for waiting
+
+        if (show_exit) exit(0);
+    }
 }
 
 
