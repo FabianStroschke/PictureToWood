@@ -16,8 +16,8 @@ void findMatchingPatches(patch_list &target, std::vector<picture> &source, const
     score.reserve((patches.size() * patches[0].size()));
     std::vector<cv::Point3i> prio_map;
     prio_map.reserve((patches.size() * patches[0].size()));
-    int offsetX = patches.size()/2;
-    int offsetY = patches[0].size()/2;
+    int offsetX = target.size.width/2;
+    int offsetY = target.size.height/2;
 
     cv::Mat salMat;
     cv::saliency::StaticSaliencyFineGrained s;
@@ -28,8 +28,8 @@ void findMatchingPatches(patch_list &target, std::vector<picture> &source, const
 
     for(int x = 0; x < patches.size(); x++){
         for(int y = 0; y < patches[x].size(); y++) {
-            double dist = abs(x-offsetX) + abs(y-offsetY);
-
+            auto &p = patches[x][y].target;
+            double dist = abs(p.x+p.width/2-offsetX) + abs(p.y+p.height/2-offsetY);
             if(dist > maxDist){
                 maxDist = dist;
             }
@@ -43,11 +43,13 @@ void findMatchingPatches(patch_list &target, std::vector<picture> &source, const
             }
 
             double sal =  *cv::sum(data).val;
+            sal = sal / std::count(c.shape->mask.begin<uchar>(), c.shape->mask.end<uchar>(), 255);
             if(sal > maxSal){
                 maxSal = sal;
             }
             score.emplace_back(dist, sal,0);
         }
+
     }
 
     for (auto &e:score) {
@@ -55,10 +57,13 @@ void findMatchingPatches(patch_list &target, std::vector<picture> &source, const
         e.y = e.y / maxSal;
         e.z = (e.x+e.y)*score.size();
     }
+    std::cout << "\n";
 
+    int next = 0;
     for(int x = 0; x < patches.size(); x++){
         for(int y = 0; y < patches[x].size(); y++) {
-            prio_map.emplace_back(x,y,score[x * (patches[x].size()) +y].z);
+            prio_map.emplace_back(x,y,score[next].z);
+            next++;
         }
     }
 
