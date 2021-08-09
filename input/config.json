@@ -1,16 +1,13 @@
 {
   "rotations": 13,
   "stepSize":{
-    "x": 20,
-    "y": 20
-  },
-  "patchSize":{
-    "x": 20,
-    "y": 20
+    "x": 15,
+    "y": 15
   },
   "filter_type": 0,
-  "filter_intens_ratio": 0.5,
+  "filter_intens_ratio": 0.3,
   "histogram_match_ratio": 0.5,
+  "layout_path": "triangle.json",
   "target": {
     "path": "Target4.png",
     "dpi": 50

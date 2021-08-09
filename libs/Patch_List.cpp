@@ -4,6 +4,9 @@
 
 #include "Patch_List.hpp"
 
+#include <utility>
+
+/** LEGACY CODE
 patch_list::patch_list(picture &p, int x, int y, style style, alignment align){
     int w = 0;
     int h = 0;
@@ -21,21 +24,29 @@ patch_list::patch_list(picture &p, int x, int y, style style, alignment align){
     cutIntoShape(p, align);
 }
 
-patch_list::patch_list(picture &p, cv::Mat &shape, alignment align){
+patch_list::patch_list(picture &p, cv::Mat &shape, int stepX, int stepY, alignment align){
+    this->_stepX = stepX;
+    this->_stepY = stepY;
     this->shape = shape.clone();
     cutIntoShape(p, align);
 }
 
+patch_list::patch_list(picture &p, cv::Mat &shape, alignment align){
+    this->shape = shape.clone();
+    cutIntoShape(p, align);
+}
+**/
 
 /**
  * Cut the picture into patches defined by shape.
  * @param align Controls where the rectangle containing the patches will start. If the image needs to be cropped, this will control where the cropping takes place. E.g TOP_LEFT meaning the Bottom and right boarder will be discarded.
  */
+ /** LEGACY CODE
 void patch_list::cutIntoShape(picture &p, alignment align) {
     int offsetX = 0;
     int offsetY = 0;
-    int width = shape.cols;
-    int height = shape.rows;
+    int stepWidth = shape.cols;
+    int stepHeight = shape.rows;
     auto &img = p.images[0].img;
 
     //calculate offset of patches
@@ -45,60 +56,56 @@ void patch_list::cutIntoShape(picture &p, alignment align) {
             offsetY = 0;
             break;
         case TOP:
-            offsetX = (img.cols % width)/2;
+            offsetX = (img.cols % stepWidth) / 2;
             offsetY = 0;
             break;
         case TOP_RIGHT:
-            offsetX = (img.cols % width);
+            offsetX = (img.cols % stepWidth);
             offsetY = 0;
             break;
         case LEFT:
             offsetX = 0;
-            offsetY = (img.rows % height)/2;
+            offsetY = (img.rows % stepHeight) / 2;
             break;
         case CENTER:
-            offsetX = (img.cols % width)/2;
-            offsetY = (img.rows % height)/2;
+            offsetX = (img.cols % stepWidth) / 2;
+            offsetY = (img.rows % stepHeight) / 2;
             break;
         case RIGHT:
-            offsetX = (img.cols % width);
-            offsetY = (img.rows % height)/2;
+            offsetX = (img.cols % stepWidth);
+            offsetY = (img.rows % stepHeight) / 2;
             break;
         case BOTTOM_LEFT:
             offsetX = 0;
-            offsetY = (img.rows % height);
+            offsetY = (img.rows % stepHeight);
             break;
         case BOTTOM:
-            offsetX = (img.cols % width)/2;
-            offsetY = (img.rows % height);
+            offsetX = (img.cols % stepWidth) / 2;
+            offsetY = (img.rows % stepHeight);
             break;
         case BOTTOM_RIGHT:
-            offsetX = (img.cols % width);
-            offsetY = (img.rows % height);
+            offsetX = (img.cols % stepWidth);
+            offsetY = (img.rows % stepHeight);
             break;
     }
 
-    /*
-    std::cout << this->croppingLoss(width,height)*100 << "% of the picture will be lost due to cropping!\n";
-    std::cout << "cols:"<< img.cols / width << "\n";
-    std::cout << "rows:"<< img.rows / height << "\n";
-     */
-    //this->croppingAdjust(width,height);
-    this->patches = std::vector<std::vector<cell>>(img.cols / width);
+
+    this->patches = std::vector<std::vector<patch>>((img.cols-shape.cols) / stepWidth + 1);
 
     //go from top left to bottom right
-    for(int x = 0; offsetX + x*width +width<= img.cols; x++){
-        this->patches[x].reserve(img.rows / height);
-        for(int y = 0; offsetY + y*height + height <= img.rows; y++){
+    for(int x = 0; offsetX + x * stepWidth + shape.cols <= img.cols; x++){
+        this->patches[x].reserve((img.rows-shape.rows) / stepHeight + 1);
+        for(int y = 0; offsetY + y * stepHeight + shape.rows <= img.rows; y++){
 
             //create patch and put it into list
-            this->patches[x].emplace_back(&p, &shape,offsetX + x * width, offsetY + y * height);
+            this->patches[x].push_back({cell(&p, &shape,offsetX + x * stepWidth, offsetY + y * stepHeight, stepWidth, stepHeight), cell()});
+
             //this->patches.back().show();
         }
     }
 
 }
-
+**/
 
 /**
 * Saves the patches into the specified directory.
@@ -122,12 +129,81 @@ void patch_list::save_patches(const std::string& path) {
     //writes the images
     for(int x = 0; x < patches.size(); x++) {
         for (int y = 0; y < patches[x].size(); y++) {
-            auto &p = patches[x][y];
+            auto &p = patches[x][y].target;
             auto rec = cv::Rect(p.x,p.y,p.width,p.height);
             imwrite(output_path + "/" + "n" + std::to_string(x) + "," + std::to_string(y) + ".tiff", p.source->images[0].img(rec));
             //imwrite(output_path + "/" + "g" + std::to_string(x) + "," + std::to_string(y) + ".tiff", patches[x][y].img_gray);
         }
     }
+}
+
+patch_list::patch_list(picture &p, Pattern &ptrn, alignment align) {
+    pattern = &ptrn;
+    auto &img = p.images[0].img;
+    auto dims = pattern->getGridDimension(cv::Size(img.cols,img.rows));
+    auto patternSize = pattern->getPatternSize(cv::Size(img.cols,img.rows));
+
+    //calculate offset of patches
+    switch(align){
+        case TOP_LEFT:
+            offset.x = 0;
+            offset.y = 0;
+            break;
+        case TOP:
+            offset.x = (img.cols - patternSize.width) / 2;
+            offset.y = 0;
+            break;
+        case TOP_RIGHT:
+            offset.x = (img.cols - patternSize.width);
+            offset.y = 0;
+            break;
+        case LEFT:
+            offset.x = 0;
+            offset.y = (img.rows - patternSize.height) / 2;
+            break;
+        case CENTER:
+            offset.x = (img.cols - patternSize.width) / 2;
+            offset.y = (img.rows - patternSize.height) / 2;
+            break;
+        case RIGHT:
+            offset.x = (img.cols - patternSize.width);
+            offset.y = (img.rows - patternSize.height) / 2;
+            break;
+        case BOTTOM_LEFT:
+            offset.x = 0;
+            offset.y = (img.rows - patternSize.height);
+            break;
+        case BOTTOM:
+            offset.x = (img.cols - patternSize.width) / 2;
+            offset.y = (img.rows - patternSize.height);
+            break;
+        case BOTTOM_RIGHT:
+            offset.x = (img.cols - patternSize.width);
+            offset.y = (img.rows - patternSize.height);
+            break;
+    }
+
+    this->patches = std::vector<std::vector<patch>>(dims.width);
+
+    //go from top left to bottom right
+    for(int x = 0; x < dims.width; x++){
+        this->patches[x].reserve(dims.height);
+        for(int y = 0; y < dims.height; y++){
+
+            //create patch and put it into list
+            auto pos = pattern->getPointAt(x,y);
+            Shape &shapeRef = pattern->getShapeAt(x,y);
+            if(not shapeRef.size.empty()
+                && shapeRef.size.width+pos.x <=patternSize.width
+                && shapeRef.size.height+pos.y <=patternSize.height) {
+                this->patches[x].push_back({cell(&p, &(shapeRef),offset.x + pos.x, offset.y + pos.y), cell()});
+
+            }
+        }
+    }
+
+    //get size of picture cover by patches
+    this->size = patternSize;
 }
 
 /**
