@@ -6,10 +6,15 @@
 
 cv::Mat stitchPicture(patch_list &patches);
 
+std::vector<cv::Point>
+getTransformedPoints(int outputDPI, bool flipV, bool flipH, std::map<picture *, cv::Mat> &m, cell &c);
+
 boost::mutex claimMutex;
 boost::mutex finishMutex;
 
-void findMatchingPatches(patch_list &target, std::vector<picture> &source, const int stepX, const int stepY, const std::function<long(const cell &, const cell &)> &comp){
+void
+findMatchingPatches(patch_list &target, std::vector<picture> &source, const int stepX, const int stepY, double cutWidth,
+                    const std::function<long(const cell &, const cell &)> &comp) {
     auto &patches = target.patches;
     boost::asio::thread_pool pool(boost::thread::hardware_concurrency());
     std::vector<cv::Point3d> score;
@@ -79,7 +84,7 @@ void findMatchingPatches(patch_list &target, std::vector<picture> &source, const
         int y = p.y;
         patch& curPatch = patches[x][y];
 
-            auto func = [x , y, stepX, stepY, &curPatch, &source,  &comp, &openProcesses](){
+            auto func = [cutWidth, stepX, stepY, &curPatch, &source,  &comp, &openProcesses](){
                 bool cellClaimed = false;
                 int count = 0;
                 auto &t = curPatch.target;
@@ -109,7 +114,7 @@ void findMatchingPatches(patch_list &target, std::vector<picture> &source, const
                 }
 
                 claimMutex.lock();
-                cellClaimed = curPatch.source.claimCell();
+                cellClaimed = curPatch.source.claimCell(std::ceil(curPatch.source.source->currentDPI/25.4*cutWidth));
                 claimMutex.unlock();
 
             }
@@ -127,12 +132,13 @@ void findMatchingPatches(patch_list &target, std::vector<picture> &source, const
         if(not out.empty()){
             namedWindow("Final Image", cv::WINDOW_AUTOSIZE);
             imshow( "Final Image", out);
-
+/*
             cv::Mat maskedImg;
             cv::bitwise_and(source.back().images[0].img_gray,source.back().images[0].mask,maskedImg);
 
             namedWindow("Cut", cv::WINDOW_AUTOSIZE);
-            imshow( "Cut", maskedImg);
+            imshow( "Cut", source[1].images[0].mask);
+*/
         }
     }
     pool.join();
@@ -199,7 +205,6 @@ cv::Mat stitchPicture(patch_list &patches) {
     for(auto &col:patches.patches){
         for(auto &p:col){
             if(not p.source.data.empty()) {
-                auto r = cv::Rect(p.target.x - patches.offset.x, p.target.y - patches.offset.y, p.target.width, p.target.height);
                 cv::Mat matRoi = matDst(cv::Rect(p.target.x - patches.offset.x, p.target.y - patches.offset.y, p.target.width, p.target.height));
                 p.source.data.copyTo(matRoi, p.source.shape->mask);
             }
@@ -209,7 +214,7 @@ cv::Mat stitchPicture(patch_list &patches) {
     return matDst;
 }
 
-cv::Mat assembleOutput(patch_list &patches) {
+std::string assembleOutput(patch_list &patches, std::string appendix) {
     cv::Mat matDst = stitchPicture(patches);
 
     //checks if the output directory exist or creates
@@ -219,17 +224,138 @@ cv::Mat assembleOutput(patch_list &patches) {
 
     //creates a sub directory for the image or clears an existing one
     output_path += "/Final_Picture";
-    if(boost::filesystem::exists(output_path)){
-        boost::filesystem::remove_all(output_path);
-        boost::filesystem::create_directory(output_path);
-    }else{
+    if(!boost::filesystem::exists(output_path)){
         boost::filesystem::create_directory(output_path);
     }
+    std::string filename = output_path + "/result"+appendix;
+    int count = 0;
+    while (boost::filesystem::exists(filename)){
+        count++;
+        filename = output_path + "/result"+appendix+std::to_string(count);
+    }
+    boost::filesystem::create_directory(filename);
 
     //writes the images
-    imwrite(output_path + "/result.tiff", matDst);
+    imwrite(filename+"/synthetic.tiff", matDst);
 
     //show image
     imshow("result",matDst);
-    return matDst;
+    return filename;
+}
+
+void
+generateCutMap(patch_list &patches, int outputDPI, double cutWidth, std::string outputPath, bool flipV, bool flipH) {
+    //gather used wood textures
+    std::vector<picture *>usedSources;
+    usedSources.push_back(patches.patches[0][0].target.source);
+    for (auto &col:patches.patches) {
+        for (auto &p: col) {
+            if(std::count(usedSources.begin(), usedSources.end(), p.source.source) == 0){
+                usedSources.push_back(p.source.source);
+            }
+        }
+    }
+
+    //create a empty cutmap
+    std::map<picture *, cv::Mat> m;
+    for (picture *s:usedSources) {
+        if(s->origImage.mask.empty()){
+            m.insert({s, cv::Mat(s->origImage.img.rows,s->origImage.img.cols,CV_8U,255)});
+        }
+        else{
+            m.insert({s, s->origImage.mask.clone()});
+            if(flipH)cv::flip(m.find(s)->second,m.find(s)->second,0);
+            if(flipV)cv::flip(m.find(s)->second,m.find(s)->second,1);
+        }
+        double scale = (double)outputDPI/s->origDPI;
+        cv::resize(m.find(s)->second,m.find(s)->second, cv::Size(), scale,scale);
+    }
+
+    //generate cuts
+    int count = 1;
+    for (auto &col:patches.patches) {
+        for (auto &c: col) {
+
+            // draw patch in final location
+            std::vector<cv::Point> transformedPoints1 = getTransformedPoints(outputDPI, false, false, m, c.target);
+
+            cv::polylines(m.find(c.target.source)->second,transformedPoints1,true,0,(cutWidth*outputDPI/25.4)*2, cv::LINE_AA);
+            cv::fillConvexPoly(m.find(c.target.source)->second,transformedPoints1,255);
+
+            cv::Point center1;
+            for (auto &e:transformedPoints1) {
+                center1 += e;
+            }
+            center1 = center1 / (int) transformedPoints1.size();
+
+            std::vector<cv::Point> orientationLine1;
+            orientationLine1.push_back(transformedPoints1[0]);
+            orientationLine1.push_back(0.5*(center1-transformedPoints1[0])+transformedPoints1[0]);
+            cv::polylines(m.find(c.target.source)->second,orientationLine1,true,0,(cutWidth*outputDPI/25.4), cv::LINE_AA);
+
+            std::string text1 = std::to_string(count);
+            cv::putText(m.find(c.target.source)->second,text1,center1-cv::Point(2*text1.size()*outputDPI/100,-2*outputDPI/100), cv::FONT_HERSHEY_SIMPLEX,0.25*outputDPI/100,0,std::ceil(outputDPI/150));
+
+
+            //draw patch on wood texture
+            std::vector<cv::Point> transformedPoints = getTransformedPoints(outputDPI, flipV, flipH, m, c.source);
+
+            cv::polylines(m.find(c.source.source)->second,transformedPoints,true,0,(cutWidth*outputDPI/25.4)*2, cv::LINE_AA);
+            cv::fillConvexPoly(m.find(c.source.source)->second,transformedPoints,255);
+
+            cv::Point center;
+            for (auto &e:transformedPoints) {
+                center += e;
+            }
+            center = center / (int) transformedPoints.size();
+
+            std::vector<cv::Point> orientationLine;
+            orientationLine.push_back(transformedPoints[0]);
+            orientationLine.push_back(0.5*(center-transformedPoints[0])+transformedPoints[0]);
+            cv::polylines(m.find(c.source.source)->second,orientationLine,true,0,(cutWidth*outputDPI/25.4), cv::LINE_AA);
+
+
+            std::string text = std::to_string(count);
+            cv::putText(m.find(c.source.source)->second,text,center-cv::Point(2*text.size()*outputDPI/100,-2*outputDPI/100), cv::FONT_HERSHEY_SIMPLEX,0.25*outputDPI/100,0,std::ceil(outputDPI/150));
+
+            count++;
+        }
+    }
+    for(auto &x: m){
+        imwrite(outputPath+"/"+x.first->name+".tiff", x.second);
+    }
+
+}
+
+std::vector<cv::Point> getTransformedPoints(int outputDPI, bool flipV, bool flipH, std::map<picture *, cv::Mat> &m, cell &c) {
+    auto &src = c.source->images[0].mask;
+    auto &cut = c.source->images[c.rot].mask;
+    cv::Mat rotatedMask;
+    double angle = -(c.rot*360.0/c.source->images.size());
+
+    cv::Mat rotMat = cv::getRotationMatrix2D(cv::Point2f((cut.cols-1)/2.0, (cut.rows-1)/2.0), angle, 1.0);
+    rotMat.at<double>(0,2) += src.cols/2.0 - cut.cols/2.0;
+    rotMat.at<double>(1,2) += src.rows/2.0 - cut.rows/2.0;
+    rotMat *= (double) outputDPI/c.source->currentDPI;
+
+    std::vector<cv::Point> notTransformedPoints;
+    std::vector<cv::Point> transformedPoints;
+    for (auto &e: c.shape->points) {
+        notTransformedPoints.emplace_back(e.x+c.x, e.y+c.y);
+    }
+
+    cv::transform(notTransformedPoints,transformedPoints,rotMat);
+    if(flipV){
+        for (auto &e: transformedPoints) {
+            e.x *= -1;
+            e.x += m.find(c.source)->second.cols;
+        }
+    }
+    if(flipH){
+        for (auto &e: transformedPoints) {
+            e.y *= -1;
+            e.y += m.find(c.source)->second.rows;
+        }
+    }
+    return transformedPoints;
 }

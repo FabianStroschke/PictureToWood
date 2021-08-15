@@ -28,7 +28,7 @@ class cell {
         cell(picture *source, const Shape *shape, int x = 0, int y = 0, int stepX = -1, int stepY = -1);
         void show();
         void moveTo(int x_,int y_);
-        bool claimCell();
+        bool claimCell(int cutWidth);
         bool isContinuous() const;
 
 };

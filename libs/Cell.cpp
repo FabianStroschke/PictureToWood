@@ -35,7 +35,7 @@ void cell::moveTo(int x_,int y_) {
     this->y = y_;
 }
 
-bool cell::claimCell() {
+bool cell::claimCell(int cutWidth) {
     if( not this->isContinuous()) return false;
 
     cv::Rect rec(x,y,width,height);
@@ -53,8 +53,17 @@ bool cell::claimCell() {
     rotMat.at<double>(0,2) += src.cols/2.0 - cut.cols/2.0;
     rotMat.at<double>(1,2) += src.rows/2.0 - cut.rows/2.0;
 
-    cv::warpAffine(cut, rotatedMask, rotMat, src.size());
-    src -= rotatedMask*255;
+
+    std::vector<cv::Point> notTransformedPoints;
+    std::vector<cv::Point> transformedPoints;
+    for (auto &p: this->shape->points) {
+        notTransformedPoints.emplace_back(p.x+this->x, p.y+this->y);
+    }
+
+    cv::transform(notTransformedPoints,transformedPoints,rotMat);
+    cv::polylines(src,transformedPoints,true,0,cutWidth+2);
+
+    cv::fillConvexPoly(src,transformedPoints,0);
     source->updateMasks();
     return true;
 }

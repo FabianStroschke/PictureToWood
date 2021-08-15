@@ -30,8 +30,8 @@ class picture {
         void addRotations(int n);
         void updateMasks();
         void scaleTo(unsigned int dpi);
-        void transformHistTo(cv::Mat targetHist, int channel);
-
+        void transformHistTo(cv::Mat targetHist, int channel, double ratio);
+        void addColorToMask(cv::Vec<uchar, 3> color);
         unsigned int currentDPI;
         unsigned int filterType;
         double filter_ratio;

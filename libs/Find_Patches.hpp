@@ -22,8 +22,12 @@ long compareFilter(const cell& a, const cell& b);
 long compareGray(const cell& a, const cell& b);
 
 void
-findMatchingPatches(patch_list &target, std::vector<picture> &source, const int stepX, const int stepY, const std::function<long(const cell &, const cell &)> &comp = compareFilter);
+findMatchingPatches(patch_list &target, std::vector<picture> &source, const int stepX, const int stepY, double cutWidth,
+                    const std::function<long(const cell &, const cell &)> &comp);
 
-cv::Mat assembleOutput(patch_list &patches);
+std::string assembleOutput(patch_list &patches, std::string appendix= "");
+
+void generateCutMap(patch_list &patches, int outputDPI, double cutWidth, std::string outputPath, bool flipV, bool flipH);
+
 
 #endif //PICTURETOWOOD_FIND_PATCHES_HPP
