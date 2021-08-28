@@ -6,126 +6,60 @@
 
 cv::Mat stitchPicture(patch_list &patches);
 
-std::vector<cv::Point>
-getTransformedPoints(int outputDPI, bool flipV, bool flipH, std::map<picture *, cv::Mat> &m, cell &c);
+std::vector<cv::Point> getTransformedPoints(int outputDPI, bool flipV, bool flipH, std::map<picture *, cv::Mat> &m, cell &c);
+
+std::vector<cv::Point3i> generate_priority_scores(patch_list &target);
+
+void find_best_patch(patch &curPatch, std::vector<picture> &source, const int stepX, const int stepY, double cutWidth,
+                     const std::function<long(const cell &, const cell &)> &comp);
 
 boost::mutex claimMutex;
 boost::mutex finishMutex;
 
+/**
+ * Searches for the best patch based on a priority queue and displays the current state of the search.
+ * @param target List of patches that should be approximated.
+ * @param source List of textures that will be used to approximate the patches in target.
+ * @param stepX How big each step along the X axis is when iterating over the textures (in px).
+ * @param stepY How big each step along the Y axis is when iterating over the textures (in px).
+ * @param cutWidth Width of cut  that need to be considered (in mm).
+ * @param comp Compare function to measure the difference between two cells.
+ * @returns Adds source cell to each patch in target, if found.
+ */
 void
 findMatchingPatches(patch_list &target, std::vector<picture> &source, const int stepX, const int stepY, double cutWidth,
                     const std::function<long(const cell &, const cell &)> &comp) {
-    auto &patches = target.patches;
     boost::asio::thread_pool pool(boost::thread::hardware_concurrency());
-    std::vector<cv::Point3d> score;
-    score.reserve((patches.size() * patches[0].size()));
-    std::vector<cv::Point3i> prio_map;
-    prio_map.reserve((patches.size() * patches[0].size()));
-    int offsetX = target.size.width/2;
-    int offsetY = target.size.height/2;
 
-    cv::Mat salMat;
-    cv::saliency::StaticSaliencyFineGrained s;
-    s.computeSaliency(target.patches[0][0].target.source->images[0].img, salMat);
 
-    double maxDist = 0;
-    double maxSal = 0;
+    //generate priority scores
+    std::vector<cv::Point3i> prio_map = generate_priority_scores(target);
 
-    for(int x = 0; x < patches.size(); x++){
-        for(int y = 0; y < patches[x].size(); y++) {
-            auto &p = patches[x][y].target;
-            double dist = abs(p.x+p.width/2-offsetX) + abs(p.y+p.height/2-offsetY);
-            if(dist > maxDist){
-                maxDist = dist;
-            }
-
-            //compute detail score
-            cell &c = target.patches[x][y].target;
-            cv::Rect rec(c.x,c.y,c.width,c.height);
-            cv::Mat data = salMat(rec);
-            if(c.shape){
-                data.copyTo(data,c.shape->mask);
-            }
-
-            double sal =  *cv::sum(data).val;
-            sal = sal / std::count(c.shape->mask.begin<uchar>(), c.shape->mask.end<uchar>(), 255);
-            if(sal > maxSal){
-                maxSal = sal;
-            }
-            score.emplace_back(dist, sal,0);
-        }
-
-    }
-
-    for (auto &e:score) {
-        e.x = 1-(e.x / maxDist);
-        e.y = e.y / maxSal;
-        e.z = (e.x+e.y)*score.size();
-    }
-    std::cout << "\n";
-
-    int next = 0;
-    for(int x = 0; x < patches.size(); x++){
-        for(int y = 0; y < patches[x].size(); y++) {
-            prio_map.emplace_back(x,y,score[next].z);
-            next++;
-        }
-    }
-
+    //sort by priority
     auto compPrio = [](const cv::Point3i& p1, const cv::Point3i& p2){
         return p1.z > p2.z;
     };
     std::sort(prio_map.begin(), prio_map.end(), compPrio);
 
+    //create task for every patch
     unsigned long openProcesses = prio_map.size();
-
     for(auto &p: prio_map){
         int x = p.x;
         int y = p.y;
-        patch& curPatch = patches[x][y];
+        patch& curPatch = target.patches[x][y];
 
-            auto func = [cutWidth, stepX, stepY, &curPatch, &source,  &comp, &openProcesses](){
-                bool cellClaimed = false;
-                int count = 0;
-                auto &t = curPatch.target;
-                while(not cellClaimed && count <20 ) { //limit for tries to find a patch
-                    count++;
-                    curPatch.source = cell(&source[0], t.shape, 0, 0, t.stepWidth, t.stepHeight);
-                    cell cur(&source[0], t.shape, 0, 0, t.stepWidth, t.stepHeight);
-                    long min = -1;
-
-                for (auto &s: source) {
-                    cur.source = &s;
-                    for (int r = 0; r < s.images.size(); r++) {
-                        cur.rot = r;
-                        auto img = s.images[r].img;
-                        for (int y_i = 0; y_i < img.rows - t.height; y_i += stepY) {
-                            for (int x_i = 0; x_i < img.cols - t.width; x_i += stepX) {
-                                cur.moveTo(x_i, y_i);
-                                long diff = comp(t, cur);
-                                if ((diff < min && diff > 0) || min < 0) {
-                                    min = diff;
-                                    curPatch.source = cur;
-                                    //match[x][y] = best;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                claimMutex.lock();
-                cellClaimed = curPatch.source.claimCell(std::ceil(curPatch.source.source->currentDPI/25.4*cutWidth));
-                claimMutex.unlock();
-
-            }
+        //create special task for current patch
+        auto func = [cutWidth, stepX, stepY, &curPatch, &source,  &comp, &openProcesses](){
+            find_best_patch(curPatch, source, stepX, stepY, cutWidth, comp);
             finishMutex.lock();
             openProcesses--;
             finishMutex.unlock();
         };
+        //add task to thread pool
         boost::asio::post(pool, func);
     }
 
-
+    //show current state of patch matching
     while(openProcesses>0){
         cv::waitKey(20);
         auto out = stitchPicture(target);
@@ -141,9 +75,132 @@ findMatchingPatches(patch_list &target, std::vector<picture> &source, const int 
 */
         }
     }
+    //wait for all threads to finish
     pool.join();
 }
 
+/**
+ * Tries to find the best approximation of a patch.
+ * @param curPatch Patch that should be approximated.
+ * @param source List of textures that will be used to approximate the patches in target.
+ * @param stepX How big each step along the X axis is when iterating over the textures (in px).
+ * @param stepY How big each step along the Y axis is when iterating over the textures (in px).
+ * @param cutWidth Width of cut  that need to be considered (in mm).
+ * @param comp Compare function to measure the difference between two cells.
+ * @returns Adds source cell to each patch in target, if found.
+ */
+void find_best_patch(patch &curPatch, std::vector<picture> &source, const int stepX, const int stepY, double cutWidth,
+                     const std::function<long(const cell &, const cell &)> &comp) {
+    bool cellClaimed = false;
+    int count = 0;
+    auto &t = curPatch.target;
+    //iterate over source textures to find best approximation of curPatch
+    while(not cellClaimed && count <20 ) { //limit for tries to find a patch
+        count++;
+        curPatch.source = cell(&source[0], t.shape, 0, 0, t.stepWidth, t.stepHeight);
+        cell cur(&source[0], t.shape, 0, 0, t.stepWidth, t.stepHeight);
+        long min = -1;
+
+        for (auto &s: source) { //each texture in source
+            cur.source = &s;
+            for (int r = 0; r < s.images.size(); r++) { //each rotation per source
+                cur.rot = r;
+                auto img = s.images[r].img;
+                //move over texture and search for best approximation
+                for (int y_i = 0; y_i < img.rows - t.height; y_i += stepY) {
+                    for (int x_i = 0; x_i < img.cols - t.width; x_i += stepX) {
+                        cur.moveTo(x_i, y_i);
+                        long diff = comp(t, cur);
+                        if ((diff < min && diff > 0) || min < 0) {
+                            min = diff;
+                            curPatch.source = cur;
+                            //match[x][y] = best;
+                        }
+                    }
+                }
+            }
+        }
+        //prevent other threats from claiming the same area by using mutexes
+        claimMutex.lock();
+        cellClaimed = curPatch.source.claimCell(ceil(curPatch.source.source->currentDPI / 25.4 * cutWidth));
+        claimMutex.unlock();
+    }
+}
+/**
+ * Generate priority of patches based on distance to center and salience sum.
+ * @param target List of patches that should be approximated.
+ * @returns Returns a list with a priority for each patch index.
+ */
+std::vector<cv::Point3i> generate_priority_scores(patch_list &target) {
+    auto patches = target.patches;
+    std::vector<cv::Point3i> prio_map;
+    prio_map.reserve((patches.size() * patches[0].size()));
+
+    std::vector<cv::Point3d> score;
+    score.reserve((patches.size() * patches[0].size()));
+    int offsetX = target.size.width/2;
+    int offsetY = target.size.height/2;
+
+    //generate salience map
+    cv::Mat salMat;
+    cv::saliency::StaticSaliencyFineGrained s;
+    s.computeSaliency(target.patches[0][0].target.source->images[0].img, salMat);
+
+    double maxDist = 0;
+    double maxSal = 0;
+
+    //iterate over all patches
+    for(int x = 0; x < patches.size(); x++){
+        for(int y = 0; y < patches[x].size(); y++) {
+            //compute distance to center
+            auto &p = patches[x][y].target;
+            double dist = abs(p.x+p.width/2-offsetX) + abs(p.y+p.height/2-offsetY);
+            if(dist > maxDist){
+                maxDist = dist;
+            }
+
+            //compute detail score
+            cell &c = target.patches[x][y].target;
+            cv::Rect rec(c.x,c.y,c.width,c.height);
+            cv::Mat data = salMat(rec);
+            if(c.shape){
+                data.copyTo(data,c.shape->mask);
+            }
+            double sal =  *cv::sum(data).val;
+            sal = sal / std::count(c.shape->mask.begin<uchar>(), c.shape->mask.end<uchar>(), 255);
+            if(sal > maxSal){
+                maxSal = sal;
+            }
+            score.emplace_back(dist, sal,0);
+        }
+
+    }
+
+    //combine distance and salience score
+    for (auto &e:score) {
+        e.x = 1-(e.x / maxDist);
+        e.y = e.y / maxSal;
+        e.z = (e.x+e.y)*score.size();
+    }
+
+    //add priority for each patch index
+    int next = 0;
+    for(int x = 0; x < patches.size(); x++){
+        for(int y = 0; y < patches[x].size(); y++) {
+            prio_map.emplace_back(x,y,score[next].z);
+            next++;
+        }
+    }
+    return prio_map;
+}
+
+/**
+ * Computes distance between the images of two cells.
+ * @param a Cell to be compared.
+ * @param b Cell to be compared.
+ * @returns Difference between image data
+ * @returns -1 if the cells have a different shape
+ */
 long compareFilter(const cell& a, const cell& b){
     long sum = 0;
     for(int y = 0; y<a.height; y++){
@@ -163,6 +220,7 @@ long compareFilter(const cell& a, const cell& b){
     }
     return sum;
 }
+/**LEGACY CODE**/
 long compareGray(const cell& a, const cell& b){
     long sum = 0;
     for(int y = 0; y<a.height; y++){
@@ -179,28 +237,12 @@ long compareGray(const cell& a, const cell& b){
     return sum;
 }
 
-
+/**
+ * Creates a Picture out of the provided patches.
+ * @param patches List of patches that should be turned into one picture.
+ * @returns Picture composed of the provided patches
+ */
 cv::Mat stitchPicture(patch_list &patches) {
-    /*   cell *c = nullptr;
-       for (auto &e:patch_list) {
-           for (auto &p:e) {
-               if(p.source != nullptr){
-                   c = &p;
-                   break;
-               }
-           }
-       }
-       if(c == nullptr){
-           return cv::Mat();
-       }
-
-       int x = (int) patch_list.size();
-       int y = (int) patch_list.front().size();
-       int sizeX = c->width+(x-1)*c->stepWidth;
-       int sizeY = c->height+(y-1)*c->stepHeight;
-
-   */
-
     cv::Mat matDst(patches.size, CV_8UC3, cv::Scalar::all(50));
     for(auto &col:patches.patches){
         for(auto &p:col){
@@ -214,6 +256,12 @@ cv::Mat stitchPicture(patch_list &patches) {
     return matDst;
 }
 
+/**
+ * Creates a Picture out of the provided patches and saves it as a file.
+ * @param patches List of patches that should be turned into one picture.
+ * @param appendix String that will be appended to the directory name that will be created
+ * @returns Path of the directory created.
+ */
 std::string assembleOutput(patch_list &patches, std::string appendix) {
     cv::Mat matDst = stitchPicture(patches);
 
@@ -243,6 +291,16 @@ std::string assembleOutput(patch_list &patches, std::string appendix) {
     return filename;
 }
 
+/**
+ * Generates cut and assembly maps for the provided patches
+ * @param patches List of patches used in the cut map.
+ * @param outputDPI Dpi of the generated cut maps.
+ * @param cutWidth Width of cuts in mm.
+ * @param outputPath Directory path where the maps will be saved.
+ * @param textScale Scales the text size.
+ * @param flipV If the maps should be flipped vertical.
+ * @param flipH If the maps should be flipped horizontal.
+ */
 void
 generateCutMap(patch_list &patches, int outputDPI, double cutWidth, std::string outputPath, double textScale,
                bool flipV, bool flipH) {
@@ -259,7 +317,7 @@ generateCutMap(patch_list &patches, int outputDPI, double cutWidth, std::string 
         }
     }
 
-    //create a empty cutmap
+    //create an empty cutmap
     std::map<picture *, cv::Mat> m;
     for (picture *s:usedSources) {
         if(s->origImage.mask.empty()){
@@ -330,7 +388,12 @@ generateCutMap(patch_list &patches, int outputDPI, double cutWidth, std::string 
 
 }
 
+/**
+ * Transforms points of a cell to the origin rotation of their source texture.
+ * @returns Transformed Points
+ */
 std::vector<cv::Point> getTransformedPoints(int outputDPI, bool flipV, bool flipH, std::map<picture *, cv::Mat> &m, cell &c) {
+    // get rotation matrix
     auto &src = c.source->images[0].mask;
     auto &cut = c.source->images[c.rot].mask;
     cv::Mat rotatedMask;
@@ -341,12 +404,14 @@ std::vector<cv::Point> getTransformedPoints(int outputDPI, bool flipV, bool flip
     rotMat.at<double>(1,2) += src.rows/2.0 - cut.rows/2.0;
     rotMat *= (double) outputDPI/c.source->currentDPI;
 
+    //transform points
     std::vector<cv::Point> notTransformedPoints;
     std::vector<cv::Point> transformedPoints;
     for (auto &e: c.shape->points) {
         notTransformedPoints.emplace_back(e.x+c.x, e.y+c.y);
     }
 
+    //flip points
     cv::transform(notTransformedPoints,transformedPoints,rotMat);
     if(flipV){
         for (auto &e: transformedPoints) {
