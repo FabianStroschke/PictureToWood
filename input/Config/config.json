@@ -1,0 +1,49 @@
+{
+  "rotations": 15,
+  "stepSize":{
+    "x": 5,
+    "y": 5
+  },
+  "filter_type": 1,
+  "filter_intens_ratio": 0.3,
+  "histogram_match_ratio": 0.5,
+  "layout_path": "../Pattern/tri_square_alternate.json",
+  "cut_map": {
+    "flip_vertical": true,
+    "flip_horizontal": false,
+    "dpi": 100
+  },
+  "target": {
+    "path": "../Targets/eye.jpg",
+    "output_width_cm": 25
+  },
+  "woodTextures": [{
+    "path": "../Textures/Scanned_with_finish/001.tif",
+    "dpi": 300
+  },{
+    "path": "../Textures/Scanned_with_finish/002.tif",
+    "dpi": 300
+  },{
+    "path": "../Textures/Scanned_with_finish/003.tif",
+    "dpi": 300
+  },{
+    "path": "../Textures/Scanned_with_finish/004.tif",
+    "dpi": 300
+  },{
+    "path": "../Textures/Scanned_with_finish/005.tif",
+    "dpi": 300
+  },{
+    "path": "../Textures/Scanned_with_finish/006.tif",
+    "dpi": 300
+  },{
+    "path": "../Textures/Scanned_with_finish/007.tif",
+    "dpi": 300
+  },{
+    "path": "../Textures/Scanned_with_finish/008.tif",
+    "dpi": 300
+  },{
+    "path": "../Textures/Scanned_with_finish/009.tif",
+    "dpi": 300
+  }
+  ]
+}
