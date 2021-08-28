@@ -50,7 +50,7 @@ int main( int argc, char ** argv ) {
                    1, config["filter_type"], config["filter_intens_ratio"]);
     target.origDPI = (target.origImage.img.cols / t["output_width_cm"].get<double>())*2.54;
     target.currentDPI = target.origDPI;
-    target.scaleTo(60);
+    target.scaleTo(config["cut_map"]["dpi"]);
 
 
     std::vector<picture> texture_list;
@@ -79,9 +79,9 @@ int main( int argc, char ** argv ) {
     auto plist = patch_list(target, pattern);
 
     startTimer();
-    findMatchingPatches(plist, texture_list, config["stepSize"]["x"], config["stepSize"]["y"], 1.5, compareFilter);
-    auto output = assembleOutput(plist, "hello");
-    generateCutMap(plist, 300, 1, output, true, false);
+    findMatchingPatches(plist, texture_list, config["stepSize"]["x"], config["stepSize"]["y"], config["cut_map"]["cut_width_mm"], compareFilter);
+    auto output = assembleOutput(plist, config["output"]["appendix"]);
+    generateCutMap(plist, config["output"]["dpi"], config["cut_map"]["cut_width_mm"], output, config["cut_map"]["text_scale"], true, false);
     endTimer();
     log();
 }

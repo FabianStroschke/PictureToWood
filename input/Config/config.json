@@ -8,10 +8,16 @@
   "filter_intens_ratio": 0.3,
   "histogram_match_ratio": 0.5,
   "layout_path": "../Pattern/tri_square_alternate.json",
+  "output": {
+    "appendix": "_stock",
+    "text_scale": 1.0,
+    "dpi": 300
+  },
   "cut_map": {
     "flip_vertical": true,
     "flip_horizontal": false,
-    "dpi": 100
+    "cut_width_mm": 0.5,
+    "dpi": 25
   },
   "target": {
     "path": "../Targets/eye.jpg",

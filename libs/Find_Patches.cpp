@@ -244,7 +244,10 @@ std::string assembleOutput(patch_list &patches, std::string appendix) {
 }
 
 void
-generateCutMap(patch_list &patches, int outputDPI, double cutWidth, std::string outputPath, bool flipV, bool flipH) {
+generateCutMap(patch_list &patches, int outputDPI, double cutWidth, std::string outputPath, double textScale,
+               bool flipV, bool flipH) {
+    textScale *= outputDPI/100;
+
     //gather used wood textures
     std::vector<picture *>usedSources;
     usedSources.push_back(patches.patches[0][0].target.source);
@@ -294,7 +297,7 @@ generateCutMap(patch_list &patches, int outputDPI, double cutWidth, std::string 
             cv::polylines(m.find(c.target.source)->second,orientationLine1,true,0,(cutWidth*outputDPI/25.4), cv::LINE_AA);
 
             std::string text1 = std::to_string(count);
-            cv::putText(m.find(c.target.source)->second,text1,center1-cv::Point(2*text1.size()*outputDPI/100,-2*outputDPI/100), cv::FONT_HERSHEY_SIMPLEX,0.25*outputDPI/100,0,std::ceil(outputDPI/150));
+            cv::putText(m.find(c.target.source)->second,text1,center1-cv::Point(2*text1.size()*textScale,-2*textScale), cv::FONT_HERSHEY_SIMPLEX,0.25*textScale,0,std::ceil(textScale*(1/1.5)));
 
 
             //draw patch on wood texture
@@ -316,7 +319,7 @@ generateCutMap(patch_list &patches, int outputDPI, double cutWidth, std::string 
 
 
             std::string text = std::to_string(count);
-            cv::putText(m.find(c.source.source)->second,text,center-cv::Point(2*text.size()*outputDPI/100,-2*outputDPI/100), cv::FONT_HERSHEY_SIMPLEX,0.25*outputDPI/100,0,std::ceil(outputDPI/150));
+            cv::putText(m.find(c.source.source)->second,text,center-cv::Point(2*text.size()*textScale,-2*textScale), cv::FONT_HERSHEY_SIMPLEX,0.25*textScale,0,std::ceil(textScale*(1/1.5)));
 
             count++;
         }
