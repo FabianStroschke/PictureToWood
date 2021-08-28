@@ -30,6 +30,7 @@ picture::picture(const std::string &path, unsigned int dpi, int filter_type, dou
         String file_path = samples::findFile(path);
         this->origImage.img = imread(file_path, IMREAD_COLOR);
         this->origImage.img_gray = imread(file_path, IMREAD_GRAYSCALE);
+        this->origImage.mask = cv::Mat(this->origImage.img.rows,this->origImage.img.cols,CV_8U,255);
         this->origDPI = dpi;
         this->currentDPI = dpi;
         this->filterType = filter_type;
@@ -143,7 +144,7 @@ void picture::scaleTo(unsigned int dpi) {
     addRotations(images.size());
 }
 
-void picture::transformHistTo(cv::Mat targetHist, int channel) {
+void picture::transformHistTo(cv::Mat targetHist, int channel, double ratio) {
     auto &s = this->origImage.img;
     int channels[] = {channel};
     int histSize[] = {255};
@@ -192,15 +193,36 @@ void picture::transformHistTo(cv::Mat targetHist, int channel) {
 
     //apply map
     cv::Mat workingChannel;
+    cv::Mat origChannel;
     cv::extractChannel(this->origImage.img, workingChannel,channel);
+    cv::extractChannel(this->origImage.img, origChannel,channel);
 
     workingChannel.forEach<uchar>(
             [map](uchar &x, const int * position){
                 x= map[x];
             });
+    workingChannel =  workingChannel*ratio+origChannel*(1-ratio);
     cv::insertChannel(workingChannel,this->origImage.img, channel);
+    cvtColor(this->origImage.img, this->origImage.img_gray, cv::COLOR_BGR2GRAY);
     this->updateImageSet();
 
+}
+
+void picture::addColorToMask(Vec3b color) {
+
+    for(int i = 0; i < this->origImage.img.rows; i++)
+    {
+        const cv::Vec3b *Pi = this->origImage.img.ptr<cv::Vec3b >(i);
+        auto *Mi = this->origImage.mask.ptr<uchar>(i);
+        for(int j = 0; j < this->origImage.img.cols; j++)
+            if(Pi[j] == color) {
+                Mi[j] = 0;
+            }
+    }
+    this->images[0].mask = images[0].mask.clone();
+
+    cv::resize(this->origImage.mask,this->images[0].mask, cv::Size(images[0].mask.cols,images[0].mask.rows));
+    updateMasks();
 }
 
 cv::Mat cumulativeHist(std::vector<picture> &picList, int channel) {

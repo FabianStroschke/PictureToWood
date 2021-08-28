@@ -50,17 +50,20 @@ int main( int argc, char ** argv ) {
                    1, config["filter_type"], config["filter_intens_ratio"]);
     target.origDPI = (target.origImage.img.cols / t["output_width_cm"].get<double>())*2.54;
     target.currentDPI = target.origDPI;
+    target.scaleTo(60);
+
 
     std::vector<picture> texture_list;
     for (auto & e : config["woodTextures"]) {
         texture_list.emplace_back(config["offset"].get<std::string>() + e["path"].get<std::string>(), e["dpi"], config["filter_type"], config["filter_intens_ratio"]);
-        texture_list.back().scaleTo(target.origDPI);
+        texture_list.back().scaleTo(target.currentDPI);
         texture_list.back().addRotations(config["rotations"]);
+        texture_list.back().addColorToMask(cv::Vec3b(0,0,0));
     }
 
-    target.transformHistTo(cumulativeHist(texture_list, 0), 0);
-    target.transformHistTo(cumulativeHist(texture_list, 1), 1);
-    target.transformHistTo(cumulativeHist(texture_list, 2), 2);
+    target.transformHistTo(cumulativeHist(texture_list, 0), 0, config["histogram_match_ratio"]);
+    target.transformHistTo(cumulativeHist(texture_list, 1), 1, config["histogram_match_ratio"]);
+    target.transformHistTo(cumulativeHist(texture_list, 2), 2, config["histogram_match_ratio"]);
 
     //read pattern
     Pattern pattern;
@@ -70,14 +73,15 @@ int main( int argc, char ** argv ) {
     }else{
         pattern = Pattern(config["offset"].get<std::string>() + config["layout_path"].get<std::string>());
     }
-    pattern.convertToCm(target.origDPI);
-    pattern.show(cv::Size(target.origImage.img.cols,target.origImage.img.rows));
+    pattern.convertToCm(target.currentDPI);
+    pattern.show(cv::Size(target.images[0].img.cols,target.images[0].img.rows));
 
     auto plist = patch_list(target, pattern);
 
     startTimer();
-    findMatchingPatches(plist, texture_list, config["stepSize"]["x"], config["stepSize"]["y"],compareFilter);
-    auto output = assembleOutput(plist);
+    findMatchingPatches(plist, texture_list, config["stepSize"]["x"], config["stepSize"]["y"], 1.5, compareFilter);
+    auto output = assembleOutput(plist, "hello");
+    generateCutMap(plist, 300, 1, output, true, false);
     endTimer();
     log();
 }
