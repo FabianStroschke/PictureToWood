@@ -4,6 +4,10 @@
 
 #include "Shape.hpp"
 
+/**
+ * Creates the shape based on the polygon provided as a point list.
+ * @param pointList List of points that form a polygon.
+ */
 Shape::Shape(std::vector<cv::Point> pointList) {
     this->points = std::move(pointList);
     this->size = cv::Size(0,0);
@@ -27,6 +31,12 @@ Shape::Shape(std::vector<cv::Point> pointList) {
     this->generateMask();
 }
 
+
+/**
+ * Scales the shape and corresponding mask.
+ * @param x Scaling along x axis.
+ * @param y Scaling along y axis.
+ */
 void Shape::scale(double x, double y) {
     if(points.empty())return;
     for (auto &p: points) {
@@ -38,6 +48,10 @@ void Shape::scale(double x, double y) {
     this->generateMask();
 }
 
+
+/**
+ * Generates the mask of the shape object
+ */
 void Shape::generateMask() {
     if(points.empty())return;
     this->mask = cv::Mat(this->size, CV_8U, cv::Scalar(0));
