@@ -6,7 +6,7 @@
 using namespace cv;
 
 /**
- * Show the colored and grayscale version of the image.
+ * Filtered version of the image.
  */
 void picture::show() const {
     for (const auto & pair : this->images) {
@@ -43,9 +43,14 @@ picture::picture(const std::string &path, unsigned int dpi, int filter_type, dou
     }
 }
 
+/**
+ * Updates the imageset of the object
+ */
 void picture::updateImageSet() {
     images[0].img = origImage.img.clone() ;
     images[0].img_gray = origImage.img_gray.clone() ;
+
+    //scale image
     if(currentDPI != origDPI){
         double scale = (double) currentDPI/origDPI;
         if(scale>1.0){
@@ -57,6 +62,7 @@ void picture::updateImageSet() {
         }
     }
 
+    //create filter
     switch(this->filterType){
         case 0:
         {
@@ -92,6 +98,10 @@ void picture::updateImageSet() {
     images[0].mask = Mat(images[0].img_gray.rows, images[0].img_gray.cols , images[0].img_gray.type(), 255);
 }
 
+/**
+ * Creates rotations of the original image.
+ * @param n Number of rotations that should be added to standard rotation.
+ */
 void picture::addRotations(int n) {
     this->images.resize(n);
     auto src = images[0].img;
@@ -118,7 +128,9 @@ void picture::addRotations(int n) {
 
     }
 }
-
+/**
+ * Updates the masks of all rotations.
+ */
 void picture::updateMasks() {
     auto src = images[0].mask;
     for (int i = 1; i < images.size(); i++) {
@@ -137,13 +149,20 @@ void picture::updateMasks() {
         cv::warpAffine(src, pair.mask, rot, bbox.size());
     }
 }
-
+/**
+ * Scales the images and updates the rotations
+ */
 void picture::scaleTo(unsigned int dpi) {
     this->currentDPI = dpi;
     updateImageSet();
     addRotations(images.size());
 }
-
+/**
+ * Performs histogram matching based on the given histogram
+ * @param targetHist Histogram that should be matched.
+ * @param channel Color channel that should be used for histogram matching.
+ * @param ratio Ratio between original color values and histogram matched color values.
+ */
 void picture::transformHistTo(cv::Mat targetHist, int channel, double ratio) {
     auto &s = this->origImage.img;
     int channels[] = {channel};
@@ -208,6 +227,10 @@ void picture::transformHistTo(cv::Mat targetHist, int channel, double ratio) {
 
 }
 
+/**
+ * Removes pixel of a certain color from the image and adds them to the mask.
+ * @param color Color that should be part of the mask
+ */
 void picture::addColorToMask(Vec3b color) {
 
     for(int i = 0; i < this->origImage.img.rows; i++)
@@ -225,6 +248,12 @@ void picture::addColorToMask(Vec3b color) {
     updateMasks();
 }
 
+/**
+ * Creates a combined histogram of a list of images.
+ * @param picList List of images.
+ * @param channel Color channel that should be used for histogram creation.
+ * @returns Cumulative Histogram of the images.
+ */
 cv::Mat cumulativeHist(std::vector<picture> &picList, int channel) {
     cv::Mat hist;
     for (auto &p : picList) {

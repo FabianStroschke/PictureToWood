@@ -6,7 +6,8 @@
 
 #include <utility>
 
-/** LEGACY CODE
+/**LEGACY CODE**/
+/*
 patch_list::patch_list(picture &p, int x, int y, style style, alignment align){
     int w = 0;
     int h = 0;
@@ -35,13 +36,14 @@ patch_list::patch_list(picture &p, cv::Mat &shape, alignment align){
     this->shape = shape.clone();
     cutIntoShape(p, align);
 }
-**/
+*/
 
+/**LEGACY CODE**/
 /**
  * Cut the picture into patches defined by shape.
  * @param align Controls where the rectangle containing the patches will start. If the image needs to be cropped, this will control where the cropping takes place. E.g TOP_LEFT meaning the Bottom and right boarder will be discarded.
  */
- /** LEGACY CODE
+ /*
 void patch_list::cutIntoShape(picture &p, alignment align) {
     int offsetX = 0;
     int offsetY = 0;
@@ -105,7 +107,7 @@ void patch_list::cutIntoShape(picture &p, alignment align) {
     }
 
 }
-**/
+*/
 
 /**
 * Saves the patches into the specified directory.
@@ -137,6 +139,13 @@ void patch_list::save_patches(const std::string& path) {
     }
 }
 
+
+/**
+ * Creates a patch_list based on a picture and pattern.
+ * @param p Picture the patches are based on.
+ * @param ptrn Pattern that should be used.
+ * @param align Where the picture is anchored if parts need to be cropped.
+*/
 patch_list::patch_list(picture &p, Pattern &ptrn, alignment align) {
     pattern = &ptrn;
     auto &img = p.images[0].img;
@@ -206,6 +215,7 @@ patch_list::patch_list(picture &p, Pattern &ptrn, alignment align) {
     this->size = patternSize;
 }
 
+/**LEGACY CODE**/
 /**
  * Calculates the percentage of image area that will be lost, if the image is cut into patches of size width x height.
  * @param width Width of the patches in px.
@@ -224,6 +234,7 @@ double patch_list::croppingLoss(int width, int height) const{
 }
 */
 
+/**LEGACY CODE**/
 /**
  * Adjusts the parameters to minimize the loss due to cropping.
  * @param width Width of the patches in px. Will be changed if a better value is found.

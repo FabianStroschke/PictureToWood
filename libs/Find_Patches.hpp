@@ -27,7 +27,8 @@ findMatchingPatches(patch_list &target, std::vector<picture> &source, const int 
 
 std::string assembleOutput(patch_list &patches, std::string appendix= "");
 
-void generateCutMap(patch_list &patches, int outputDPI, double cutWidth, std::string outputPath, bool flipV, bool flipH);
+void generateCutMap(patch_list &patches, int outputDPI, double cutWidth, std::string outputPath, double textScale,
+                    bool flipV, bool flipH);
 
 
 #endif //PICTURETOWOOD_FIND_PATCHES_HPP

@@ -9,7 +9,9 @@ Pattern::Pattern() {
     this->gridStepY = 0;
 }
 
-
+/**
+ * Loads pattern from json file
+ */
 Pattern::Pattern(const std::string &path) {
     std::ifstream i(path);
     nlohmann::json j;
@@ -43,36 +45,23 @@ Pattern::Pattern(const std::string &path) {
 
 }
 
-void Pattern::show(int repeat) {
-    int max_width = 0;
-    for (auto &row:this->layout) {
-        if(row.size() > max_width) max_width = row.size();
-    }
-    cv::Mat pattern(layout.size()*gridStepY*repeat, max_width*gridStepX*repeat ,CV_8UC3,cv::Scalar(0,0,0));
-
-    for (int x = 0; x < max_width*repeat; ++x) {
-        for (int y = 0; y < layout.size()*repeat; ++y) {
-            auto shape = this->getShapeAt(x, y);
-            if(not shape.size.empty()){
-                try{
-                    cv::Mat matRoi = pattern(cv::Rect(x*gridStepX, y*gridStepY, shape.size.width,shape.size.height));
-                    cv::fillConvexPoly(matRoi,shape.points,cv::Scalar(std::rand()%205+50,std::rand()%205+50,std::rand()%205+50));
-                }catch (std::exception &e){ continue;}
-            }
-        }
-    }
-
-    namedWindow("Pattern", cv::WINDOW_AUTOSIZE);
-    imshow("Pattern", pattern);
-    cv::waitKey ( 10000);//TODO replace with better solution for waiting
-}
-
+/**
+ * Gets the grid dimension based on the image dimensions.
+ * @param ImageDimensions Dimensions for which the grid dimensions should be calculated.
+ * @returns Grid dimensions based on the image dimensions.
+ */
 cv::Size Pattern::getGridDimension(const cv::Size& ImageDimensions) {
     int width = 0;
     int height = 0;
     return {ImageDimensions.width/gridStepX,ImageDimensions.height/gridStepY};
 }
 
+/**
+ * Gets the shape of a patch at a given grid position.
+ * @param x X Coordinate of position
+ * @param y Y Coordinate of position
+ * @returns Shape of a patch at a given grid position.
+ */
 Shape &Pattern::getShapeAt(int x, int y) {
     y = y % layout.size();
     x = x % layout[y].size();
@@ -83,6 +72,11 @@ cv::Point Pattern::getPointAt(int x, int y) const {
     return {x*gridStepX, y*gridStepY};
 }
 
+/**
+ * Scales the Pattern.
+ * @param x Scaling along x axis.
+ * @param y Scaling along y axis.
+ */
 void Pattern::scalePattern(double x, double y) {
     x = std::floor(gridStepX*x)/gridStepX;
     y = std::floor(gridStepY*y)/gridStepY;
@@ -94,10 +88,20 @@ void Pattern::scalePattern(double x, double y) {
     }
 }
 
+
+/**
+ * Gets the maximum pattern size that fits in the given image dimensions.
+ * @param ImageDimensions Dimensions of the image that should contain the pattern.
+ * @returns Maximum pattern size.
+ */
 cv::Size Pattern::getPatternSize(const cv::Size &ImageDimensions) {
     return {(ImageDimensions.width/gridStepX)*gridStepX,(ImageDimensions.height/gridStepY)*gridStepY};
 }
 
+/**
+ * Scales the pattern until its size matches the given dpi
+ * @param DPI The pixel density the pattern should be scaled to.
+ */
 void Pattern::convertToCm(double DPI) {
     if(!scale_to_cm) return;
     int min = 0;
@@ -111,6 +115,10 @@ void Pattern::convertToCm(double DPI) {
     this->scalePattern(scale,scale);
 }
 
+/**
+ * Creates the pattern with randomly colored pieces and shows it.
+ * @param ImgSize Dimensions of the pattern that should be generated and shown.
+ */
 void Pattern::show(cv::Size ImgSize) {
     if (show_on){
         cv::Mat pattern(ImgSize.height, ImgSize.width,CV_8UC3,cv::Scalar(0,0,0));
