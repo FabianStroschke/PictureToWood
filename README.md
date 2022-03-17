@@ -6,4 +6,5 @@ Fabian Stroschke, Student at Technische Universität Berlin
 
 ## Links
 [Paper the project is inspired from](https://light.informatik.uni-bonn.de/wood-pixels/)
+
 [Gituhb of the above paper](https://github.com/isering/WoodPixel)
