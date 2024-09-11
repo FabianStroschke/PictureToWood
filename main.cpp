@@ -87,7 +87,7 @@ int main( int argc, char ** argv ) {
 
     //generate & save output
     auto output = assembleOutput(plist, config["output"]["appendix"]);
-    generateCutMap(plist, config["output"]["dpi"], config["cut_map"]["cut_width_mm"], output, config["cut_map"]["text_scale"], true, false);
+    generateCutMap(plist, config["output"]["dpi"], config["cut_map"]["cut_width_mm"], output, config["output"]["text_scale"], true, false);
     endTimer();
     log();
 }
