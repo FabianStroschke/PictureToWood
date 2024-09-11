@@ -1,0 +1,546 @@
+<!doctype html><html class="no-js"><head><meta charset="utf-8"><title>Producible Computational Parquetry</title><meta name="description" content=""><meta name="viewport" content="width=device-width">
+<!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+<link href="http://fonts.googleapis.com/css?family=Raleway:300,400,600" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" type="text/css" href="style.css">
+        <script type="text/javascript" async
+  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+        <!--<link rel="stylesheet" href="styles/main.37ab405b.css">-->
+<body>
+<!--[if lt IE 7]>
+<p class="browsehappy">You are using an 
+    <strong>outdated</strong> browser. Please 
+    <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.
+</p>
+<![endif]-->
+<div class="container">
+
+    <nav class="navbar">
+        <div class="container">
+            <ul class="navbar-list">
+                <li class="navbar-item">
+                    <a class="navbar-link" href="#Intro">Intro</a>
+                </li>
+                <li class="navbar-item">
+                    <a class="navbar-link" href="#Motivation">Motivation</a>
+                </li>
+                <li class="navbar-item">
+                    <a class="navbar-link" href="#Algorithm">Algorithm</a>
+                </li>
+                <li class="navbar-item">
+                    <a class="navbar-link" href="#Results">Results</a>
+                </li>
+                <li class="navbar-item">
+                    <a class="navbar-link" href="#Conclusions and future work">Conclusions and future work</a>
+                </li>
+                <li class="navbar-item">
+                    <a class="navbar-link" href="#How to use">How to use</a>
+                </li>
+                <li class="navbar-item">
+                    <a class="navbar-link" href="#References">References</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="header" id="Intro">
+        <h2 class="title">Producible Computational Parquetry</h2>
+        <h6>Project by Fabian Stroschke (<a href="mailto:fabian.stroschke@campus.tu-berlin.de">fabian.stroschke@campus.tu-berlin.de</a>)
+        </h6>
+
+        <div class="row">
+<!--            <div class="one column category" style="text-align: center;">-->
+<!--                <h5 class="docs-header">Teaser Image</h5>-->
+            <img class="u-max-full-width" src="images/Eye_half.png">
+            <img class="u-max-full-width" src="videos/eye_pattern_blendover.gif" width="300">
+                    <p>
+                        Mosaics are mostly created from small evenly colored tiles and where already created in ancient
+                        Rome and Greece. The process of creating mosaics with wood patches instead of colored tiles is
+                        usually called parquetry. Finding the best wood patches for these kinds of mosaics can be difficult
+                        and time-consuming, while leaving only al little margin of error. To address these problems Iseringhausen et al.<a href="#1">[1]</a>
+                        created an algorithm for patch-based image generation, that is constrained in its limitation of
+                        resources, and allows the fabrication of these images with real world materials.
+                    </p>
+        </div>
+    </section>
+
+    <div class="docs-section" id="Motivation">
+        <h3 class="section-heading">Motivation</h3>
+        <p>
+            While the approach of Iseringhausen et al.<a href="#1">[1]</a> created parquetry by dividing a picture into a grid of quadratic patches and then altering
+            them based on the edges in the picture, this project tries to solve the problem of creating parquetry by utilizing
+            different tessellations. The idea of this approach is to approximate the edges within the picture, not by deforming the
+            edges of each patch but instead by using pattern consisting of different regular geometric shapes. By using shapes with straight edges,
+            the patches remain simple to cut and can be manufactured without the use of CnC machines, while also generating a picture that looks less
+            discretized compared to a grid pattern.
+        </p>
+    </div>
+
+    <div class="docs-section" id="Algorithm">
+        <h3 class="section-heading">Algorithm</h3>
+        <p>
+            The algorithm first load the config and pattern files. Then it starts preprocessing of the pictures. The program
+            matches the histogram of the target picture and the cumulated histogram of all source textures and interpolates
+            the new picture with the original picture. This step aligns the color spaces of target and source picture and allows
+            for a better use of the source textures. Then a filtered image is created for each picture by using an edge filter.
+            The histogram matching and creation of filter images where suggested in the paper from Iseringhausen et al.<a href="#1">[1]</a> to
+            to increase the quality of the resulting picture. <br>
+            Before the target picture is turned into patches based on the provided pattern, the program creates rotated versions of
+            the source textures. Adding rotated versions of source textures removes the need to rotate each patch in every step of the patch search because
+            the algorithm just needs to search on every rotated texture to include rotated wood patches.<br>
+            When the preprocessing is done, the patches are ordered priority in which they are computed. The priority consists
+            of the distance from the patch to the center of the image and the average of the salience values contained in the patch.
+            The salience values of each pixel is calculated by using the salience filter form OpenCV. After ordering the patches by priority
+            they are distributed on a thread pool. The algorithm then uses a greedy approach to look for the best wood patch.<br>
+            When all wood patches are found, the program generates the cut and assembly maps and creates an artificial picture of the parquetry.
+        </p>
+    </div>
+
+    <div class="docs-section" id="Results">
+        <h3 class="section-heading">Results</h3>
+        <p>
+            The algorithm was applied to a set of different pictures with varying tessellations.
+        </p>
+        <h4>Different pattern</h4>
+        <p>
+            The figures 2 to 6 show the results of the algorithm with different tessellations with figure 1 as the target picture.
+            All results where computed with the same wood textures.
+        </p>
+        <div class="row">
+            <div class="one-third column category" style="text-align: center;">
+                <h5 class="docs-header">Figure 1</h5>
+                <img class="u-max-full-width" src="images/eye.jpg">
+                <p>Target picture.</p>
+            </div>
+
+            <div class="one-third column category" style="text-align: center;">
+                <h5 class="docs-header">Figure 2</h5>
+                <img class="u-max-full-width" src="videos/pattern1.gif">
+                <p>Pattern consisting of squares and triangles.</p>
+            </div>
+            <div class="one-third column category" style="text-align: center;">
+                <h5 class="docs-header">Figure 3</h5>
+                <img class="u-max-full-width" src="videos/pattern2.gif">
+                <p>Pattern consisting of rhomboids.</p>
+            </div>
+            </div>
+            <div class="row">
+                <div class="one-third column category" style="text-align: center;">
+                    <h5 class="docs-header">Figure 4</h5>
+                    <img class="u-max-full-width" src="videos/pattern3.gif">
+                    <p>Pattern consisting of squares and octagons.</p>
+                </div>
+                <div class="one-third column category" style="text-align: center;">
+                    <h5 class="docs-header">Figure 5</h5>
+                    <img class="u-max-full-width" src="videos/pattern4.gif">
+                    <p>Pattern consisting of alternating triangles.</p>
+                </div>
+                <div class="one-third column category" style="text-align: center;">
+                    <h5 class="docs-header">Figure 6</h5>
+                    <img class="u-max-full-width" src="videos/pattern5.gif">
+                    <p>Pattern consisting of alternating rectangles.</p>
+                </div>
+
+        </div>
+        <h4>Comparison with target picture</h4>
+        <p>To compare the results with the original image the animations in figure 7 and 8 cross-fade between the target and the
+            synthetically generated picture. The image in figure 8 was generated to build a prototype out of newspaper.</p>
+        <div class="row">
+            <div class="one-half column category" style="text-align: center;">
+                <h5 class="docs-header">Figure 7</h5>
+                <img class="u-max-full-width" src="videos/eye_pattern_blendover.gif">
+                <p>Cross-fade between target picture and generated one. The picture used the same textures as figure 2 to 6.</p>
+            </div>
+            <div class="one-half column category" style="text-align: center;">
+                <h5 class="docs-header">Figure 8</h5>
+                <img class="u-max-full-width" src="videos/eye_newspaper_blendover.gif">
+                <p>Cross-fade between target picture and generated one. The picture used a newspaper commercial as a source texture.</p>
+            </div>
+        </div>
+
+        <h4>Manufacture the a picture</h4>
+        <div class="u-pull-right" style="text-align: center; width:400px; margin-left:20px">
+            <div class="row">
+                <div class="one-third column category" style="text-align: center;">
+                    <h5 class="docs-header">Figure 9</h5>
+                    <img class="u-max-full-width" src="images/result_template.png">
+                    <p>Fabian Stroschke</p>
+                </div>
+                <div class="one-third column category" style="text-align: center;">
+                    <h5 class="docs-header">Figure 10</h5>
+                    <img class="u-max-full-width" src="images/result_synthetic.png">
+                    <p>Picture with about 280 wood patches.</p>
+                </div>
+                <div class="one-third column category" style="text-align: center;">
+                    <h5 class="docs-header">Figure 11</h5>
+                    <img class="u-max-full-width" src="images/result_synthetic_high_res.png">
+                    <p>Picture with about 1300 wood patches.</p>
+                </div>
+            </div>
+        </div>
+
+
+
+        <p> As a template for a produced piece of parquetry I choose the picture shown in figure 9. The background
+            of the picture was turned white to prevent the background from fusing with the rest of the picture. I generated
+            two pictures with a different amount of wood patches shown in figure 10 and 11. To keep the cutting time reasonably low
+            I choose the picture in figure 1 for production.
+            The individual wood veneer used for the production where between 1 and 2 mm thick and most of them where to brittle
+            for cutting with the band saw shown in figure 12.
+            To reinforce the wood pieces they were glued to 2 mm thick plywood. Then the wood cut be cut into pieces and each part
+            took 1-3 minutes to manufacture. The production of all 280 wood patches took about 6-7h of sawing time.
+            Assembly of the patches in figure 13 took additional 1-2 hours. The final result is displayed in figure 14.
+            <br><br>
+
+        </p>
+        <div class="row">
+            <div class="one-third column category" style="text-align: center;">
+                <h5 class="docs-header">Figure 12</h5>
+                <img class="u-max-full-width" src="images/bandsaw.jpg">
+                <p>Band saw used for cutting.</p>
+            </div>
+            <div class="one-third column category" style="text-align: center;">
+                <h5 class="docs-header">Figure 13</h5>
+                <img class="u-max-full-width" src="images/result_pieces.jpg">
+                <p>All cut out patches</p>
+            </div>
+            <div class="one-third column category" style="text-align: center;">
+                <h5 class="docs-header">Figure 14</h5>
+                <img class="u-max-full-width" src="images/result_picture.jpg">
+                <p>Assembled picture</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="docs-section" id="Conclusions and future work">
+        <h3 class="section-heading">Conclusions and future work</h3>
+        <p>
+            The use of tessellations other than a tesselation out of squares usually results in better looking parquetry but
+            can also lead to weird artifacts depending on the picture and tesselation used.
+            The amount of detail achieved by the project does not quite reach the results Iseringhausen et al.<a href="#1">[1]</a>
+            achieved with their approach, but the cuts that need to be made to manufacture the patches are way simpler.
+            Approximating edges within a patch by splitting the patch into two separate patches would probably have improved the quality of the pictures,
+            while an approach of merging adjacent patch could have kept the amount of parts to a minimum. The time of this
+            project was too short to implement these features, and there is a chance that the pictures could have looked
+            worse because both features would destroy the regularity of the tesselation. Nevertheless, these features would be
+            interesting additions for future improvements.
+        </p>
+    </div>
+
+    <div class="docs-section" id="How to use">
+        <h3 class="section-heading">How to use</h3>
+        <h4>1. Preparations</h4>
+        <p>
+            Before starting you need to choose the resources the program should work with. The project contains already some examples, so if you want to try it first you can skip this step and revisit it later.
+        </p>
+
+        <h5>Picking a target picture</h5>
+        <p>
+            There are no limitations when picking a target picture, but there are some suggestions about which pictures usually result in a better recognizable image:
+        </p>
+        <ul>
+            <li>Faces (human or animal) or parts of them(e.g. an eye) are in most cases better recognizable than other pictures</li>
+            <li>Pictures with fewer components are better in most cases so try to choose a cat before a gray background over a crowd of people or a patch of grass.</li>
+            <li>The program mostly cares about differences in brightness. Therefore, a person with green clothes could merge with a red background. Most of these cases should be solved with the integrated histogram matching, but try to choose picture where the individual components differ in brightness.</li>
+        </ul>
+
+        <h5>Getting the (wood-)textures</h5>
+        <p>TL;DR:</p>
+        <ul>
+            <li>Scan the material and get the DPI of it.</li>
+            <li>Mark unwanted parts of the image black.</li>
+        </ul>
+        <p>Why is the wood in the heading in parentheses, you ask? While this project was focused on using wood, other materials like pictures, colored paper or newspaper can also result in an interesting collages. But whatever material you choose, you need to turn it into a digital image. For this, scanning it with a scanner should be your first choice. It gives you an evenly exposed image and can calculate the exact size of your wood by using the DPI and image size. For pieces that are too big for a regular scanner, cutting it into smaller pieces is probably the best choice. Whatever method you choose, get the DPI of the picture, because it will be needed later.
+            <br><br>
+            If your texture contains parts that you don't want in your end result, take an image editing tool of your choice and paint these parts black(Hex color 0x000000). Every thing in this color will be excluded from the search process.
+        </p>
+
+
+        <h4>2. Setup configuration</h4>
+        <h5>Config file</h5>
+        <p>Table below explains the attributes of the Config.json file.</p>
+
+        <table class="u-full-width">
+            <thead>
+            <tr>
+                <th>Attribute Name</th>
+                <th></th>
+                <th>Description</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td><code>"rotations":</code></td>
+                <td></td>
+                <td>How many rotation should be used. Higher is better. Increase results in linear runtime increase.</td>
+            </tr>
+
+            <tr>
+                <td rowspan="3" style="vertical-align: top;"><code>"stepSize":{</code></td>
+                <td></td>
+                <td>How many pixels are skipped along each axis when searching for patches(1=every pixel is used, 2=every 2nd pixel is used).</td>
+            </tr>
+            <tr>
+                <td class="spanned"><code>"x":</code></td>
+                <td>Lower is better. Decrease results in linear runtime increase.</td>
+            </tr>
+            <tr>
+                <td class="spanned"><code>"y":</code></td>
+                <td>Lower is better. Decrease results in linear runtime increase.</td>
+            </tr>
+
+            <tr>
+                <td><code>"filter_type":</code></td>
+                <td></td>
+                <td>Type of edge filter to be used (0=Sobel, 1=Canny, 2=Laplacian)</td>
+            </tr>
+            <tr>
+                <td><code>"filter_intens_ratio":</code></td>
+                <td></td>
+                <td>Weighting between filter image and normal image used in patch search(1=only filter image, 0=without filter image)</td>
+            </tr>
+            <tr>
+                <td><code>"histogram_match_ratio":</code></td>
+                <td></td>
+                <td>Weighting of interpolation between histogram matched image and normal image (1=fully histogram matched, 0=image without histogram matching)</td>
+            </tr>
+            <tr>
+                <td><code>"layout_path":</code></td>
+                <td></td>
+                <td>Relative path to pattern file</td>
+            </tr>
+
+            <tr>
+                <td rowspan="3" style="vertical-align: top;"><code>"output": {</code></td>
+                <td style="padding-left: 0;"><code>"appendix":</code></td>
+                <td>Appends test to output folder name</td>
+            </tr>
+            <tr>
+                <td class="spanned"><code>"text_scale":</code></td>
+                <td>Scales text size</td>
+            </tr>
+            <tr>
+                <td class="spanned"><code>"dpi":</code></td>
+                <td>Resolution in which the cut and assembly maps are generated</td>
+            </tr>
+
+            <tr>
+                <td rowspan="4" style="vertical-align: top;"><code>"cut_map": {</code></td>
+                <td style="padding-left: 0;"><code>"flip_vertical":</code></td>
+                <td>Flips left and right of the cut maps</td>
+            </tr>
+            <tr>
+                <td class="spanned"><code>"flip_horizontal":</code></td>
+                <td>Flips up and down of the cut maps</td>
+            </tr>
+            <tr>
+                <td class="spanned"><code>"cut_width_mm":</code></td>
+                <td>Width of cut in millimeter</td>
+            </tr>
+            <tr>
+                <td class="spanned"><code>"dpi":</code></td>
+                <td>Resolution that is used for computation. Higher is better. Increase results in quadratic to cubic runtime increase.</td>
+            </tr>
+
+            <tr>
+                <td rowspan="2" style="vertical-align: top;"><code>"target": {</code></td>
+                <td style="padding-left: 0;"><code>"path":</code></td>
+                <td>Relative path to the target picture</td>
+            </tr>
+            <tr>
+                <td class="spanned"><code>"output_width_cm":</code></td>
+                <td>Size the finished picture should have after assembly</td>
+            </tr>
+
+            <tr>
+                <td rowspan="2" style="vertical-align: top;"><code>"woodTextures": [{</code></td>
+                <td style="padding-left: 0;"><code>"path":</code></td>
+                <td>Relative path to wood texture</td>
+            </tr>
+            <tr>
+                <td class="spanned"><code>"dpi":</code></td>
+                <td>Resolution at which the texture was scanned/sampled</td>
+            </tr>
+
+            </tbody>
+        </table>
+
+        <h5>Pattern file</h5>
+        <p>Table below explains the attributes of the pattern files.</p>
+        <table class="u-full-width">
+            <thead>
+            <tr>
+                <th>Attribute Name</th>
+                <th></th>
+                <th>Description</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td><code>"gridStepX":</code></td>
+                <td></td>
+                <td>Distance to the next grid point along the x-axis</td>
+            </tr>
+            <tr>
+                <td><code>"gridStepY":</code></td>
+                <td></td>
+                <td>Distance to the next grid point along the y-axis</td>
+            </tr>
+
+            <tr>
+                <td rowspan="2" style="vertical-align: top;"><code>"show":</code></td>
+                <td style="padding-left: 0;"><code>"on":</code></td>
+                <td>If true, generates the pattern and displays it before executing the computation</td>
+            </tr>
+            <tr>
+                <td class="spanned"><code>"exit":</code></td>
+                <td>If true, stops the program after the pattern was shown(works only if 'on' is true)</td>
+            </tr>
+
+            <tr>
+                <td rowspan="2" style="vertical-align: top;"><code>"convert_to_cm":</code></td>
+                <td style="padding-left: 0;"><code>"on":</code></td>
+                <td>If true, scales the patches until the specified width matches the dpi settings in the config file</td>
+            </tr>
+            <tr>
+                <td class="spanned"><code>"width_in_cm":</code></td>
+                <td>Width of patch with the smallest width in cm. </td>
+            </tr>
+
+            <tr>
+                <td rowspan="2" style="vertical-align: top;"><code>"scale":</code></td>
+                <td style="padding-left: 0;"><code>"x":</code></td>
+                <td>Scales the pattern along x-axis. Applies before conversion to cm.</td>
+            </tr>
+            <tr>
+                <td class="spanned"><code>"y":</code></td>
+                <td>Scales the pattern along y-axis. Applies before conversion to cm.</td>
+            </tr>
+            <tr>
+                <td><code>"Shapes":</code></td>
+                <td></td>
+                <td>Contains the different patch shapes as lists of points.</td>
+            </tr>
+            <tr>
+                <td><code>"Layout":</code></td>
+                <td></td>
+                <td>A matrix containing the order in which the shapes are placed. Each entry is a grid point. Each number stand for the position of the shape in the shape list. The pattern repeats if hte end of a row/column is reached.</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <h4>3. Compile and run</h4>
+        <h5>Requirements</h5>
+        <p>
+            (Skip this step if you use the already compiled binary and head to Running the program)
+            <br><br>
+            Compiling the project requires:
+        </p>
+        <ul>
+            <li>GCC / G++</li>
+            <li>CMAKE</li>
+            <li>Boost</li>
+            <li>OpenCV</li>
+        </ul>
+        <p>For installing it on Ubuntu you can use the following command in the terminal:</p>
+        <pre>
+        <code>sudo apt update && sudo apt install \
+build-essential \
+cmake \
+libboost-dev \
+libopencv-dev \        </code>
+        </pre>
+        <h5>Compiling (on Ubuntu)</h5>
+        <p>
+            (Skip this step if you use the already compiled binary and head to Running the program)
+            <br><br>
+            To compile it with CMAKE, run these commands in the root directory of the project:
+        </p>
+        <pre>
+        <code>mkdir build
+cd build
+cmake ..
+make        </code>
+        </pre>
+        <h5>Running the program</h5>
+        <p>
+            After compiling it (or you use the compiled binary in the bin directory of the project) you can run the program with:
+        </p>
+        <code>
+            ./PictureToWood [config path] [pattern path]
+        </code>
+        <p>
+            <br>
+            or
+        </p>
+        <code>
+            ./PictureToWood_x64 [config path] [pattern path]
+        </code>
+        <p><br>The config path is required for the program to run, the pattern path can also be defined in the config file.</p>
+
+        <h4>4. Print and production tips</h4>
+        <h5>Adjust DPI</h5>
+        <p>
+            OpenCV will save the cut masks always as a 96 DPI image, even if you set the DPI in the config file to a different value. The mask will be generated with the DPI you specified but you need to change the DPI value manually.
+            <br><br>
+            Example(with Paint.net): The cut mask resolution was set to 300 DPI in the config file.
+        </p>
+        <ul>
+            <li>Open the image with Paint.net
+            </li>
+            <li>Go to "Image->Resize" or press CTRL+R
+            </li>
+            <li>Go to "Resolution" and set the unit to "pixel/inch"
+            </li>
+            <li>Replace the number in the resolution field with 300
+            </li>
+            <li>Save the picture (not all file formats will support dpi)
+            </li>
+        </ul>
+        <h5>Printing it in real size</h5>
+        <p>
+            Your assembly map may be bigger than the maximum page size you can print. In this case you can use Paint to print your image over multiple pages:
+        </p>
+        <ul>
+            <li>Open the image in Paint
+            </li>
+            <li>Go to "File->Print->Page Setup"
+            </li>
+            <li>Under Scaling, select the Point "To 100%"
+            </li>
+            <li>Click OK
+            </li>
+            <li>Print the image from Paint, and make sure to select “All Pages”
+            </li>
+        </ul>
+        <h5>Applying the mask</h5>
+        <p>
+            If you have a hard time to align your cut mask on your wood, think about drilling little holes in 3 corners of the wood and paint them black in your scanned image. The black masks will also be printed on your cut mask, so you can align the printed marks with holes you drilled.
+            <br><br>
+            If you want to apply the mask to the backside of your wood, set one of the flipping option in the config file on true. If you flip it make sure you flip your wood in the right way, flipping left-to-right(vertical) is different from flipping up-to-down(horizontal). If used holes for aligning you can use the to make sure your mask is in the right orientation after flipping.        </p>
+        <h5>Cutting</h5>
+        <p>
+            While cutting make sure you are cutting away only the black border of each piece. Everything white on the inside of the border is part of your piece so try to cut nothing from it. The line pointing from a corner to the inside of your is an orientation marker for assembling the pieces so leave this line out while cutting.        </p>
+        <h5>Assembly</h5>
+        <p>
+            For assembling the parts you can print out the assembly map, like described in Printing it in real size. Then you can just put your pieces on the corresponding field of your map. Make sure the lines pointing to the inside of your piece match the line on the map to achieve the right rotation of your piece.
+        </p>
+
+    </div>
+
+    <div class="docs-section" id="References">
+        <h3 class="section-heading">References</h3>
+        <ul class="popover-list">
+            <li class="popover-item" id="1">
+                <!--A link to this may look like: <a href="#1">[1]</a>-->
+                [1] J. Iseringhausen, M. Weinmann, W. Huang, M.B. Hullin, Computational Parquetry: Fabricated Style Transfer with Wood Pixels, <i>ACM Transactions on Graphics 39 (2), 2020</i>, <a href="https://light.informatik.uni-bonn.de/wood-pixels/">https://light.informatik.uni-bonn.de/wood-pixels/</a>.
+            </li>
+          
+            <li class="popover-item" id="2">
+                [2] MathJax, <a href="https://www.mathjax.org">https://www.mathjax.org</a>, last retrieved 09-2015
+            </li>
+            
+        </ul>
+    </div>
+
+</div>
+
