@@ -1,49 +1,53 @@
+#include "json.hpp"
 #include <Picture.hpp>
 #include <Find_Patches.hpp>
 #include <Time_Measure.hpp>
 #include <Patch_List.hpp>
 #include <Pattern.hpp>
-#include "json.hpp"
 
-void checkInputs(int argc, char ** argv){
-    if(argc < 2 || argc > 3){
-        std::cout << "Expected 1 or 2 arguments but received " << argc <<  " arguments.\n\nUsage:\nmain <path to config.json> OR \nmain <path to config.json> <path to layout.json>" << "\n";
+nlohmann::json checkInputs(int argc, char ** argv){
+    if(argc < 1 || argc > 3){
+        std::cout << "Expected 0 to 2 arguments but received " << argc <<  " arguments.\n\nUsage:\nmain <path to config.json> OR \nmain <path to config.json> <path to layout.json>" << "\n";
         exit(1);
     }
-    std::string filepath;
-    filepath.append(argv[1]);
-    if(filepath.find(".json", filepath.length()-6) == std::string::npos){
+
+    std::string configPath;
+    configPath.append("./input/Config/config.json"); //default location
+
+    //get file path from config
+    if(argc >= 2){
+        configPath.clear();
+        configPath.append(argv[1]);
+    }
+
+    //check default/custom filepath if valid
+    if(configPath.find(".json", configPath.length()-6) == std::string::npos){
         std::cout << "Provided filepath is not a .json file." << "\n";
         exit(1);
     }
+
     if(argc == 3){
-        filepath.clear();
-        filepath.append(argv[2]);
-        if(filepath.find(".json", filepath.length()-6) == std::string::npos){
+        std::string layoutPath;
+        layoutPath.append(argv[2]);
+        if(layoutPath.find(".json", layoutPath.length()-6) == std::string::npos){
             std::cout << "Provided filepath is not a .json file." << "\n";
             exit(1);
         }
     }
-}
 
-nlohmann::json readJSON(char ** argv){
-    std::ifstream i(argv[1]);
+    //read config file
+    std::ifstream i(configPath);
     nlohmann::json j;
     i >> j;
 
-    std::string filepath;
-    filepath.append(argv[1]);
-    unsigned long pathEnd = filepath.find_last_of('/');
-    j["offset"] = filepath.substr(0, pathEnd+1);
-
-    //TODO check inputs
+    unsigned long pathEnd = configPath.find_last_of('/');
+    j["offset"] = configPath.substr(0, pathEnd+1);
 
     return j;
 }
 
 int main( int argc, char ** argv ) {
-    checkInputs(argc,argv);
-    nlohmann::json config  = readJSON(argv);
+    nlohmann::json config  = checkInputs(argc,argv);
 
     //load target picture
     auto t = config["target"];
@@ -87,7 +91,7 @@ int main( int argc, char ** argv ) {
 
     //generate & save output
     auto output = assembleOutput(plist, config["output"]["appendix"]);
-    generateCutMap(plist, config["output"]["dpi"], config["cut_map"]["cut_width_mm"], output, config["output"]["text_scale"], true, false);
+    generateCutMap(plist, config["output"]["dpi"], config["cut_map"]["cut_width_mm"], output, config["cut_map"]["text_scale"], true, false);
     endTimer();
     log();
 }
